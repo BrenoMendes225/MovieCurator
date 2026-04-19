@@ -34,8 +34,9 @@ export default function LandingPage() {
         if (error) throw error;
         router.push('/onboarding');
       }
-    } catch (error: any) {
-      alert(error.message || 'Erro na autenticação');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro na autenticação';
+      alert(message);
     } finally {
       setLoading(false);
     }

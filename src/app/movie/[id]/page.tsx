@@ -11,7 +11,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   const { ratings, addRating, addToWatchlist, removeFromWatchlist, watchlist } = useUser();
   
   const [movie, setMovie] = useState<Movie | null>(null);
-  const [trailers, setTrailers] = useState<any[]>([]);
+  const [trailers, setTrailers] = useState<{ id: string; key: string; name: string; type: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRating, setUserRating] = useState(ratings[id]?.rating || 0);
   const [userReview, setUserReview] = useState(ratings[id]?.review || '');
@@ -23,7 +23,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
         const data = await getMovieDetails(id);
         const mapped = mapToMovie(data);
         setMovie(mapped);
-        setTrailers(data.videos?.results?.filter((v: any) => v.type === 'Trailer') || []);
+        setTrailers(data.videos?.results?.filter((v) => v.type === 'Trailer') || []);
         setIsSaved(watchlist.some(m => m.id === id));
       } catch (error) {
         console.error('Erro ao buscar detalhes:', error);

@@ -12,7 +12,15 @@ export interface TMDBMovie {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
-  genre_ids: number[];
+  genre_ids?: number[];
+  genres?: { id: number; name: string }[];
+  credits?: {
+    cast: { name: string; profile_path?: string; character: string }[];
+    crew: { name: string; job: string }[];
+  };
+  videos?: {
+    results: { key: string; type: string; site: string }[];
+  };
 }
 
 const GENRE_MAP: Record<number, string> = {
@@ -37,16 +45,18 @@ const GENRE_MAP: Record<number, string> = {
   37: 'Faroeste',
 };
 
-export const mapToMovie = (tmdbMovie: any): any => ({
+import { Movie } from '@/data/movies';
+
+export const mapToMovie = (tmdbMovie: TMDBMovie): Movie => ({
   id: tmdbMovie.id.toString(),
-  title: tmdbMovie.title || tmdbMovie.name,
+  title: tmdbMovie.title || tmdbMovie.name || 'Sem título',
   type: tmdbMovie.title ? 'movie' : 'series',
-  genres: tmdbMovie.genre_ids?.map((id: number) => GENRE_MAP[id]) || tmdbMovie.genres?.map((g: any) => g.name) || [],
+  genres: tmdbMovie.genre_ids?.map((id: number) => GENRE_MAP[id]) || tmdbMovie.genres?.map((g) => g.name) || [],
   poster: getImageUrl(tmdbMovie.poster_path),
   backdrop: getImageUrl(tmdbMovie.backdrop_path, 'original'),
   synopsis: tmdbMovie.overview,
-  director: tmdbMovie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || 'Desconhecido',
-  cast: tmdbMovie.credits?.cast?.slice(0, 5).map((c: any) => c.name) || [],
+  director: tmdbMovie.credits?.crew?.find((c) => c.job === 'Director')?.name || 'Desconhecido',
+  cast: tmdbMovie.credits?.cast?.slice(0, 5).map((c) => c.name) || [],
   rating: Math.round(tmdbMovie.vote_average * 10) / 10,
   year: new Date(tmdbMovie.release_date || tmdbMovie.first_air_date || Date.now()).getFullYear(),
 });
@@ -73,7 +83,7 @@ export const getTrendingMovies = async () => {
   return data.results;
 };
 
-export const getMovieDetails = async (id: string) => {
+export const getMovieDetails = async (id: string): Promise<TMDBMovie> => {
   return fetchTMDB(`/movie/${id}`, { append_to_response: 'videos,credits' });
 };
 

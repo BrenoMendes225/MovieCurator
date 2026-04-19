@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Movie, MOVIES } from '@/data/movies';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Movie } from '@/data/movies';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -27,29 +27,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [ratings, setRatings] = useState<Record<string, { rating: number; review: string }>>({});
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setIsLoggedIn(!!session);
-      if (session?.user) fetchUserData(session.user.id);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setIsLoggedIn(!!session);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      } else {
-        resetState();
-      }
-    });
-
-    return () => subscription.unsubscribe();
+  const resetState = useCallback(() => {
+    setUserGenresState([]);
+    setWatchlist([]);
+    setRatings({});
   }, []);
 
-  const fetchUserData = async (userId: string) => {
+  const fetchUserData = useCallback(async (userId: string) => {
     try {
       // 1. Fetch Profile (Genres)
       const { data: profile } = await supabase
@@ -98,13 +82,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error fetching user data:', error);
     }
-  };
+  }, []);
 
-  const resetState = () => {
-    setUserGenresState([]);
-    setWatchlist([]);
-    setRatings({});
-  };
+  useEffect(() => {
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoggedIn(!!session);
+      if (session?.user) fetchUserData(session.user.id);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsLoggedIn(!!session);
+      if (session?.user) {
+        fetchUserData(session.user.id);
+      } else {
+        resetState();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserData, resetState]);
 
   const setUserGenres = async (genres: string[]) => {
     if (!user) return;
