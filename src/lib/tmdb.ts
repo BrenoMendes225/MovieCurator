@@ -33,6 +33,10 @@ export interface TMDBMovie {
   videos?: {
     results: { id: string; key: string; name: string; type: string; site: string }[];
   };
+  budget?: number;
+  revenue?: number;
+  production_companies?: { name: string; logo_path?: string }[];
+  spoken_languages?: { english_name: string; name: string }[];
 }
 
 const GENRE_MAP: Record<number, string> = {
@@ -119,5 +123,19 @@ export const getRandomMovie = async () => {
 export const getWatchProviders = async (id: string) => {
   const data = await fetchTMDB(`/movie/${id}/watch/providers`);
   return (data.results?.BR || null) as WatchProviders | null;
+};
+
+export const getGenresList = async () => {
+  const data = await fetchTMDB('/genre/movie/list');
+  return data.genres as { id: number; name: string }[];
+};
+
+export const getDiscoverMovies = async (genreIds: string[]) => {
+  const data = await fetchTMDB('/discover/movie', { 
+    with_genres: genreIds.join(','),
+    sort_by: 'popularity.desc',
+    'vote_count.gte': '100'
+  });
+  return data.results as TMDBMovie[];
 };
 

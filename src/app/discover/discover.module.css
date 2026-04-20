@@ -1,18 +1,26 @@
 .container {
-  padding: 0 20px 100px;
+  padding-bottom: 100px;
+}
+
+.loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 1px;
 }
 
 .featured {
-  margin-top: 20px;
+  margin-bottom: 40px;
 }
 
 .featuredCard {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1/1.2;
-  border-radius: 40px;
+  height: 500px;
+  border-radius: 30px;
   overflow: hidden;
-  background: #1a1a1c;
 }
 
 .featuredImg {
@@ -23,100 +31,81 @@
 
 .featuredOverlay {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to top, #0f0f10 10%, transparent 60%);
 }
 
 .featuredContent {
   position: absolute;
   bottom: 40px;
-  left: 30px;
-  right: 30px;
+  left: 40px;
+  right: 40px;
 }
 
 .categoryTag {
-  background: rgba(176, 102, 254, 0.2);
-  color: var(--primary);
-  padding: 4px 12px;
-  border-radius: 8px;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  color: var(--primary);
+  margin-bottom: 12px;
+  display: block;
 }
 
 .featuredContent h1 {
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-weight: 900;
-  margin: 15px 0 25px;
-  color: white;
-  line-height: 1.1;
+  margin-bottom: 24px;
+  max-width: 600px;
 }
 
 .featuredActions {
   display: flex;
-  gap: 15px;
-  align-items: center;
+  gap: 16px;
 }
 
 .playBtn {
-  background: var(--accent);
+  background: white;
   color: black;
-  padding: 14px 28px;
-  border-radius: 30px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-}
-
-.plusBtn {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  backdrop-filter: blur(10px);
-}
-
-.categoriesRow {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 30px 0;
-  scrollbar-width: none;
-}
-
-.categoriesRow::-webkit-scrollbar {
-  display: none;
-}
-
-.catBtn {
-  background: #1a1a1c;
-  color: rgba(255, 255, 255, 0.6);
-  padding: 12px 24px;
+  padding: 14px 32px;
   border-radius: 12px;
-  border: none;
   font-weight: 700;
-  font-size: 14px;
-  white-space: nowrap;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   transition: all 0.3s ease;
 }
 
-.catActive {
-  background: var(--primary);
+.playBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(255,255,255,0.1);
+}
+
+.plusBtn {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
   color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plusBtn.saved {
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .section {
-  margin-top: 10px;
+  padding: 0 20px;
+  margin-bottom: 40px;
 }
 
 .sectionHeader {
@@ -128,33 +117,36 @@
 
 .sectionHeader h2 {
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .viewAll {
-  color: var(--primary);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
+  color: var(--primary);
 }
 
 .movieGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 24px;
 }
 
 .movieCard {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  transition: transform 0.3s ease;
+}
+
+.movieCard:hover {
+  transform: translateY(-10px);
 }
 
 .posterWrapper {
   position: relative;
   aspect-ratio: 2/3;
-  border-radius: 24px;
+  border-radius: 20px;
   overflow: hidden;
-  background: #1a1a1c;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .posterWrapper img {
@@ -170,27 +162,229 @@
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   padding: 4px 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 12px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.star {
+  font-weight: 700;
   color: var(--accent);
 }
 
 .movieInfo h3 {
   font-size: 14px;
-  font-weight: 800;
-  color: white;
+  font-weight: 700;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .movieInfo p {
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255,255,255,0.4);
   letter-spacing: 1px;
+}
+
+/* Shuffle Feature Styles */
+.shuffleFAB {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  z-index: 100;
+  background: var(--primary-gradient);
+  border: none;
+  padding: 16px 32px;
+  border-radius: 40px;
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 15px 40px rgba(176, 102, 254, 0.4);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.shuffleFAB:hover {
+  transform: scale(1.05) translateY(-5px);
+  box-shadow: 0 20px 50px rgba(176, 102, 254, 0.6);
+}
+
+.shuffleFAB:disabled {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.shuffleOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+}
+
+.shuffleAnimation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+
+.reelWrapper {
+  width: 200px;
+  height: 300px;
+  border: 4px solid var(--primary);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 50px rgba(176, 102, 254, 0.3);
+}
+
+.reel {
+  display: flex;
+  flex-direction: column;
+  animation: scrollReel 0.1s linear infinite;
+}
+
+@keyframes scrollReel {
+  from { transform: translateY(0); }
+  to { transform: translateY(-300px); }
+}
+
+.reelImg {
+  width: 200px;
+  height: 300px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.shuffleText {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: var(--primary);
+  animation: blink 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes blink {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+/* Result Modal */
+.resultOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(15px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.resultCard {
+  background: #1a1a1c;
+  width: 100%;
+  max-width: 800px;
+  border-radius: 30px;
+  overflow: hidden;
+  display: flex;
+  box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.resultBackdrop {
+  width: 45%;
+  object-fit: cover;
+}
+
+.resultContent {
+  padding: 40px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.resultLabel {
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.resultContent h2 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 16px;
+  line-height: 1.1;
+}
+
+.resultMeta {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 24px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.resultContent p {
+  color: rgba(255,255,255,0.6);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.resultActions {
+  display: flex;
+  gap: 12px;
+}
+
+.resultPlayBtn {
+  background: var(--primary);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  flex: 1;
+  text-align: center;
+}
+
+.resultCloseBtn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .resultCard { flex-direction: column; }
+  .resultBackdrop { width: 100%; height: 200px; }
+  .featuredContent h1 { font-size: 2rem; }
+  .shuffleFAB { bottom: 20px; right: 20px; padding: 12px 20px; font-size: 12px; }
 }

@@ -1,133 +1,206 @@
 .container {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 40px 20px;
+  background: radial-gradient(circle at 50% -20%, rgba(176, 102, 254, 0.15), transparent 80%), #050505;
+  color: white;
   text-align: center;
 }
 
-.container h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin-bottom: 15px;
-  line-height: 1.2;
+.title {
+  font-size: 3rem;
+  font-weight: 900;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
 }
 
-.container h1 span {
-  color: var(--primary);
+.title span {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.container p {
-  font-size: 1rem;
+.description {
+  font-size: 1.1rem;
   color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 40px;
-  max-width: 300px;
+  max-width: 600px;
+  margin-bottom: 48px;
+  line-height: 1.6;
 }
 
 .genreGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
   width: 100%;
-  max-width: 500px;
-  margin-bottom: 40px;
+  max-width: 1000px;
+  margin-bottom: 60px;
 }
 
 .genreCard {
-  position: relative;
-  border-radius: 24px;
-  overflow: hidden;
-  height: 120px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 24px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.genreCard.large {
-  grid-column: span 2;
-  height: 160px;
-}
-
-.cardImage {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.cardOverlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%);
-}
-
-.cardContent {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
 }
 
-.genreIcon {
-  font-size: 1.2rem;
+.genreCard:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-5px);
+}
+
+.genreCard.selected {
+  background: rgba(176, 102, 254, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 30px rgba(176, 102, 254, 0.2);
 }
 
 .genreName {
-  font-size: 1.2rem;
   font-weight: 700;
-  color: white;
+  font-size: 15px;
+  letter-spacing: 0.5px;
 }
 
 .checkMark {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  width: 24px;
-  height: 24px;
+  top: 12px;
+  right: 12px;
   background: var(--primary);
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  color: white;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 900;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.genreCard:hover .cardImage {
-  transform: scale(1.1);
-}
-
-.genreCard.selected {
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 20px rgba(176, 102, 254, 0.4);
+@keyframes popIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
 }
 
 .nextBtn {
-  width: 100%;
-  max-width: 400px;
-  padding: 18px;
-  border-radius: 40px;
-  background: var(--primary-gradient);
-  color: white;
-  font-weight: 700;
-  font-size: 1.1rem;
+  padding: 20px 60px;
+  background: white;
+  color: black;
   border: none;
+  border-radius: 40px;
+  font-size: 18px;
+  font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(176, 102, 254, 0.3);
   transition: all 0.3s ease;
+  box-shadow: 0 10px 40px rgba(255, 255, 255, 0.1);
 }
 
 .nextBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 25px rgba(176, 102, 254, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 15px 50px rgba(255, 255, 255, 0.2);
 }
 
-.disclaimer {
-  margin-top: 25px;
-  font-size: 10px;
+.nextBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Movie Selection Page */
+.movieGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 60px;
+}
+
+.movieCard {
+  aspect-ratio: 2/3;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  border: 2px solid transparent;
+}
+
+.movieCard img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+
+.movieCard:hover img {
+  transform: scale(1.1);
+}
+
+.movieCard.selected {
+  border-color: var(--primary);
+  transform: scale(0.95);
+}
+
+.movieCard.selected::after {
+  content: '★';
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: var(--primary);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+.movieOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  text-align: left;
+}
+
+.movieTitle {
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 1px;
+  font-size: 14px;
+}
+
+.selectionCount {
+  position: fixed;
+  top: 40px;
+  right: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 12px 24px;
+  border-radius: 20px;
+  font-weight: 800;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+@media (max-width: 768px) {
+  .title { font-size: 2rem; }
+  .genreGrid { grid-template-columns: repeat(2, 1fr); }
+  .movieGrid { grid-template-columns: repeat(2, 1fr); }
+  .selectionCount { top: 20px; right: 20px; padding: 8px 16px; }
 }

@@ -3,7 +3,7 @@
 import { use, useState, useEffect } from 'react';
 import { Movie } from '@/data/movies';
 import { useUser } from '@/context/UserContext';
-import { getMovieDetails, mapToMovie, getWatchProviders, getImageUrl, WatchProviders } from '@/lib/tmdb';
+import { getMovieDetails, mapToMovie, getWatchProviders, getImageUrl, WatchProviders, TMDBMovie } from '@/lib/tmdb';
 import styles from './movie.module.css';
 
 export default function MovieDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,6 +11,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   const { ratings, addRating, addToWatchlist, removeFromWatchlist, watchlist } = useUser();
   
   const [movie, setMovie] = useState<Movie | null>(null);
+  const [rawMovie, setRawMovie] = useState<TMDBMovie | null>(null);
   const [trailers, setTrailers] = useState<{ id: string; key: string; name: string; type: string }[]>([]);
   const [providers, setProviders] = useState<WatchProviders | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,8 +27,10 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           getWatchProviders(id)
         ]);
         
+        setRawMovie(movieData);
         const mapped = mapToMovie(movieData);
         setMovie(mapped);
+        
         const rawTrailers = movieData.videos?.results?.filter((v) => v.type === 'Trailer') || [];
         setTrailers(rawTrailers.map(t => ({
           id: t.id || t.key,
@@ -35,6 +38,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           name: t.name || 'Trailer',
           type: t.type
         })));
+        
         setProviders(providerData);
         setIsSaved(watchlist.some(m => m.id === id));
       } catch (error) {
@@ -46,12 +50,22 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
     loadDetails();
   }, [id, watchlist]);
 
-  if (loading) return <div className={styles.loading}>Sincronizando com os arquivos de cinema...</div>;
-  if (!movie) return <div className={styles.error}>Filme não encontrado</div>;
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.skeletonHero} />
+        <div className={styles.content}>
+          <div className={styles.skeletonTitle} />
+          <div className={styles.skeletonText} />
+          <div className={styles.skeletonText} />
+        </div>
+      </div>
+    );
+  }
 
-  const handleRate = (star: number) => {
-    setUserRating(star);
-  };
+  if (!movie || !rawMovie) return <div className={styles.error}>Filme não encontrado</div>;
+
+  const handleRate = (star: number) => setUserRating(star);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,9 +83,13 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
+  const formatCurrency = (val?: number) => {
+    if (!val || val === 0) return 'N/A';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+  };
+
   return (
     <div className={styles.container}>
-      {/* Hero Backdrop */}
       <div className={styles.hero}>
         <img src={movie.backdrop} alt={movie.title} className={styles.heroImg} />
         <div className={styles.heroOverlay} />
@@ -89,9 +107,9 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           <div className={styles.meta}>
             <span>{movie.year}</span>
             <span className={styles.dot}>•</span>
-            <span>{movie.genres[0]?.toUpperCase()}</span>
+            <span>{movie.genres.join(', ').toUpperCase()}</span>
             <span className={styles.dot}>•</span>
-            <span className={styles.quality}>4K HDR</span>
+            <span className={styles.quality}>4K ULTRA HD</span>
           </div>
         </div>
 
@@ -110,7 +128,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
                   />
                 ))
               ) : (
-                <span className={styles.noProviders}>Não disponível em streaming no momento</span>
+                <span className={styles.noProviders}>Não disponível no streaming</span>
               )}
             </div>
           </div>
@@ -122,7 +140,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
             <svg width="18" height="18" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
             </svg>
-            Minha Lista
+            {isSaved ? 'Na minha Lista' : 'Adicionar à Lista'}
           </button>
         </div>
 
@@ -170,7 +188,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           <form onSubmit={handleSubmitReview}>
             <textarea 
               className={styles.reviewInput}
-              placeholder="Compartilhe sua opinião sobre o filme..."
+              placeholder="O que achou do filme? Sua opinião ajuda outros curadores."
               value={userReview}
               onChange={(e) => setUserReview(e.target.value)}
             />
@@ -186,32 +204,29 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${actor}`} alt={actor} />
                 <div className={styles.castInfo}>
                   <h4>{actor}</h4>
-                  <p>{i === 0 ? 'Ator Principal' : 'Papel Coadjuvante'}</p>
+                  <p>{i === 0 ? 'Protagonista' : 'Elenco'}</p>
                 </div>
               </div>
             ))}
-            <div className={styles.castItem}>
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${movie.director}`} alt={movie.director} />
-              <div className={styles.castInfo}>
-                <h4>{movie.director}</h4>
-                <p>Diretor</p>
-              </div>
-            </div>
           </div>
         </section>
 
         <div className={styles.statsTable}>
           <div className={styles.statRow}>
-            <span>Estúdio</span>
-            <span>Prism Studios</span>
+            <span>Produção</span>
+            <span>{rawMovie.production_companies?.[0]?.name || 'N/A'}</span>
           </div>
           <div className={styles.statRow}>
             <span>Orçamento</span>
-            <span>$185.00M</span>
+            <span>{formatCurrency(rawMovie.budget)}</span>
           </div>
           <div className={styles.statRow}>
-            <span>Idioma</span>
-            <span>Português, Inglês, Japonês</span>
+            <span>Receita</span>
+            <span>{formatCurrency(rawMovie.revenue)}</span>
+          </div>
+          <div className={styles.statRow}>
+            <span>Idiomas</span>
+            <span>{rawMovie.spoken_languages?.map(l => l.name).join(', ') || 'N/A'}</span>
           </div>
         </div>
       </div>
