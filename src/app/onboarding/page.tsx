@@ -115,33 +115,35 @@ export default function GenreSelection() {
       </div>
 
       {/* Bottom bar */}
-      <div className={styles.bottomBar}>
-        <div className={styles.progressInfo}>
-          <div className={styles.progressBar}>
-            <div
-              className={styles.progressFill}
-              style={{ width: `${Math.min((selectedIds.length / 3) * 100, 100)}%` }}
-            />
+      {selectedIds.length >= 1 && (
+        <div className={styles.bottomBar}>
+          <div className={styles.progressInfo}>
+            <div className={styles.progressBar}>
+              <div
+                className={styles.progressFill}
+                style={{ width: `${Math.min((selectedIds.length / 3) * 100, 100)}%` }}
+              />
+            </div>
+            <span className={styles.selectionInfo}>
+              {!canProceed
+                ? `Faltam ${3 - selectedIds.length} gênero${3 - selectedIds.length !== 1 ? 's' : ''} para continuar`
+                : `${selectedIds.length} gêneros selecionados ✓`}
+            </span>
           </div>
-          <span className={styles.selectionInfo}>
-            {!canProceed
-              ? `Faltam ${3 - selectedIds.length} gênero${3 - selectedIds.length !== 1 ? 's' : ''}`
-              : `${selectedIds.length} gêneros selecionados ✓`}
-          </span>
-        </div>
 
-        <button
-          className={`${styles.nextBtn} ${canProceed ? styles.nextBtnReady : ''}`}
-          onClick={handleNext}
-          disabled={!canProceed || saving}
-        >
-          {saving ? (
-            <span className={styles.btnLoading}><span /><span /><span /></span>
-          ) : (
-            <>Próxima Etapa <span className={styles.btnArrow}>→</span></>
-          )}
-        </button>
-      </div>
+          <button
+            className={`${styles.nextBtn} ${canProceed ? styles.nextBtnReady : styles.nextBtnWaiting}`}
+            onClick={handleNext}
+            disabled={!canProceed || saving}
+          >
+            {saving ? (
+              <span className={styles.btnLoading}><span /><span /><span /></span>
+            ) : (
+              <>Próxima Etapa <span className={styles.btnArrow}>→</span></>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

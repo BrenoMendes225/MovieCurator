@@ -274,6 +274,12 @@
   justify-content: space-between;
   z-index: 50;
   gap: 20px;
+  animation: slideUpBar 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUpBar {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .progressInfo {
@@ -332,16 +338,24 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 30px;
-  color: rgba(255, 255, 255, 0.4);
+  color: white;
   font-size: 15px;
   font-weight: 800;
-  cursor: not-allowed;
+  cursor: pointer;
   white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 8px;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   flex-shrink: 0;
+}
+
+/* 1-2 genres selected: visible but not yet active */
+.nextBtnWaiting {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
 }
 
 .nextBtnReady {
