@@ -9,6 +9,7 @@ import styles from './page.module.css';
 export default function LandingPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const { isLoggedIn } = useUser();
@@ -28,7 +29,13 @@ export default function LandingPage() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: { display_name: name }
+          }
+        });
         if (error) throw error;
         alert('Confirme seu e-mail para ativar sua conta!');
       } else {
@@ -57,16 +64,49 @@ export default function LandingPage() {
     <div className={styles.container}>
       <div className={styles.backgroundBlur} />
       
-      <div className={`${styles.loginCard} animate-fade-in`}>
+      <div className={styles.loginCard}>
         <div className={styles.header}>
           <h1 className={styles.logo}>CURATOR</h1>
-          <p className={styles.subtitle}>{isSignUp ? 'CRIE SUA CONTA' : 'SEU LUGAR NA PRIMEIRA FILA DO CINEMA'}</p>
+          <p className={styles.subtitle}>
+            {isSignUp ? 'FAÇA PARTE DA ELITE' : 'SEU LUGAR NA PRIMEIRA FILA'}
+          </p>
+        </div>
+
+        <div className={styles.tabSwitcher}>
+          <div className={`${styles.tabIndicator} ${isSignUp ? styles.tabIndicatorRight : ''}`} />
+          <button 
+            className={`${styles.tab} ${!isSignUp ? styles.activeTab : ''}`}
+            onClick={() => setIsSignUp(false)}
+          >
+            ENTRAR
+          </button>
+          <button 
+            className={`${styles.tab} ${isSignUp ? styles.activeTab : ''}`}
+            onClick={() => setIsSignUp(true)}
+          >
+            CRIAR CONTA
+          </button>
         </div>
 
         <form className={styles.form} onSubmit={handleAuth}>
-          <div className={styles.inputGroup}>
+          {isSignUp && (
+            <div className={styles.inputWrapper}>
+              <label>NOME COMPLETO</label>
+              <input 
+                className={styles.inputField}
+                type="text" 
+                placeholder="Como quer ser chamado?" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          <div className={styles.inputWrapper}>
             <label>EMAIL</label>
             <input 
+              className={styles.inputField}
               type="email" 
               placeholder="seu@email.com" 
               value={email}
@@ -75,12 +115,10 @@ export default function LandingPage() {
             />
           </div>
           
-          <div className={styles.inputGroup}>
-            <div className={styles.labelRow}>
-              <label>SENHA</label>
-              {!isSignUp && <span className={styles.forgot}>Esqueceu a senha?</span>}
-            </div>
+          <div className={styles.inputWrapper}>
+            <label>SENHA</label>
             <input 
+              className={styles.inputField}
               type="password" 
               placeholder="••••••••" 
               value={password}
@@ -89,37 +127,36 @@ export default function LandingPage() {
             />
           </div>
 
-          <button type="submit" className={styles.loginBtn} disabled={loading}>
-            {loading ? 'CARREGANDO...' : isSignUp ? 'Cadastrar' : 'Entrar'}
+          {!isSignUp && (
+            <span className={styles.forgotLink}>Esqueceu sua senha?</span>
+          )}
+
+          <button type="submit" className={styles.submitBtn} disabled={loading}>
+            {loading ? 'PROCESSANDO...' : isSignUp ? 'COMEÇAR AGORA' : 'ENTRAR NO CINEMA'}
           </button>
         </form>
 
         <div className={styles.divider}>
-          <span>OU CONTINUE COM</span>
+          <div className={styles.line} />
+          <span className={styles.dividerText}>OU ACESSE COM</span>
+          <div className={styles.line} />
         </div>
 
-        <div className={styles.socialRow}>
-          <button className={styles.socialBtn} onClick={() => handleSocialLogin('google')}>
+        <div className={styles.socialGrid}>
+          <button className={styles.socialButton} onClick={() => handleSocialLogin('google')}>
             <img src="https://www.google.com/favicon.ico" alt="Google" />
             <span>Google</span>
           </button>
-          <button className={styles.socialBtn} onClick={() => handleSocialLogin('apple')}>
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M17.05 20.28c-.96.95-2.12 1.43-3.48 1.43-1.25 0-2.26-.41-3.04-1.23-.78.82-1.79 1.23-3.04 1.23-1.36 0-2.52-.48-3.48-1.43C3.05 19.33 2.57 18.17 2.57 16.81c0-1.36.48-2.52 1.44-3.48.96-.95 2.12-1.43 3.48-1.43 1.25 0 2.26.41 3.04 1.23.78-.82 1.79-1.23 3.04-1.23 1.36 0 2.52.48 3.48 1.43.96.95 1.44 2.12 1.44 3.48s-.48 2.52-1.44 3.48zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+          <button className={styles.socialButton} onClick={() => handleSocialLogin('apple')}>
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.82-.779.883-1.468 2.337-1.287 3.713 1.351.104 2.727-.69 3.574-1.703z"/>
             </svg>
             <span>Apple</span>
           </button>
         </div>
 
-        <p className={styles.footer}>
-          {isSignUp ? 'Já tem uma conta?' : 'Novo por aqui?'} {' '}
-          <span 
-            className={styles.signup} 
-            onClick={() => setIsSignUp(!isSignUp)}
-            style={{ cursor: 'pointer', textDecoration: 'underline' }}
-          >
-            {isSignUp ? 'Entrar agora' : 'Crie uma conta'}
-          </span>
+        <p className={styles.legal}>
+          Ao continuar, você concorda com nossos <span>Termos</span> e <span>Privacidade</span>.
         </p>
       </div>
     </div>
