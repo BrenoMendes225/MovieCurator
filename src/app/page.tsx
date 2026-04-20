@@ -61,7 +61,8 @@ export default function LandingPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push('/onboarding');
+        router.push('/discover');
+
       }
     } catch (error) {
       const raw = error instanceof Error ? error.message : '';

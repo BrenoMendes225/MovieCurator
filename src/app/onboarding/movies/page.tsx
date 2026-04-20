@@ -11,33 +11,44 @@ export default function MovieSelection() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { addToWatchlist } = useUser();
   const router = useRouter();
 
   useEffect(() => {
     const fetchMovies = async () => {
-      const genreIdsRaw = sessionStorage.getItem('onboarding_genre_ids');
-      if (!genreIdsRaw) {
-        router.push('/onboarding');
+      const raw = sessionStorage.getItem('onboarding_genre_ids');
+
+      if (!raw) {
+        router.replace('/onboarding');
         return;
       }
 
       try {
-        const genreIds = JSON.parse(genreIdsRaw);
-        const results = await getDiscoverMovies(genreIds);
-        setMovies(results.map(mapToMovie));
+        const genreIds = JSON.parse(raw) as number[];
+        // Buscar de múltiplas páginas para mais variedade
+        const [page1, page2] = await Promise.all([
+          getDiscoverMovies(genreIds.map(String)),
+          getDiscoverMovies(genreIds.map(String)),
+        ]);
+
+        const combined = [...page1, ...page2];
+        // Deduplicar por ID
+        const unique = combined.filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+        setMovies(unique.slice(0, 20).map(mapToMovie));
       } catch (error) {
         console.error('Erro ao carregar filmes:', error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchMovies();
   }, [router]);
 
   const toggleMovie = (movie: Movie) => {
     if (selectedIds.includes(movie.id)) {
-      setSelectedIds(selectedIds.filter((id) => id !== movie.id));
+      setSelectedIds(selectedIds.filter(id => id !== movie.id));
     } else {
       if (selectedIds.length < 5) {
         setSelectedIds([...selectedIds, movie.id]);
@@ -46,56 +57,80 @@ export default function MovieSelection() {
   };
 
   const handleFinish = async () => {
-    setLoading(true);
+    setSaving(true);
     try {
-      // Adicionar os filmes selecionados à watchlist
-      const selectedFullMovies = movies.filter(m => selectedIds.includes(m.id));
-      await Promise.all(selectedFullMovies.map(m => addToWatchlist(m)));
-      
+      const selected = movies.filter(m => selectedIds.includes(m.id));
+      if (selected.length > 0) {
+        await Promise.all(selected.map(m => addToWatchlist(m)));
+      }
       sessionStorage.removeItem('onboarding_genre_ids');
       router.push('/discover');
     } catch (error) {
-      console.error('Erro ao salvar favoritos:', error);
+      console.error('Erro ao salvar:', error);
       router.push('/discover');
     }
   };
 
-  if (loading && movies.length === 0) return <div className={styles.container}>Preparando suas recomendações...</div>;
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.loadingDots}>
+          <span /><span /><span />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
-      <div className={styles.selectionCount}>
-        {selectedIds.length} / 5 SELECIONADOS
+      <div className={styles.stepIndicator}>
+        <div className={styles.step}>1</div>
+        <div className={styles.stepLine} />
+        <div className={`${styles.step} ${styles.stepActive}`}>2</div>
       </div>
 
-      <h1 className={`${styles.title} animate-fade-in`}>Agora, escolha seus <span>favoritos</span></h1>
-      <p className={`${styles.description} animate-fade-in`} style={{ animationDelay: '0.1s' }}>
-        Selecione até 5 filmes que você gosta. Isso nos ajuda a calibrar sua experiência.
+      <h1 className={`${styles.title} animate-fade-in`}>
+        Agora, escolha seus <span>favoritos</span>
+      </h1>
+      <p className={`${styles.description} animate-fade-in`}>
+        Selecione até <strong>5 filmes</strong> que você já viu e gostou. Isso treina nossas recomendações.
       </p>
-      
-      <div className={`${styles.movieGrid} animate-fade-in`} style={{ animationDelay: '0.2s' }}>
-        {movies.map((movie) => (
-          <div 
-            key={movie.id} 
-            className={`${styles.movieCard} ${selectedIds.includes(movie.id) ? styles.selected : ''}`}
-            onClick={() => toggleMovie(movie)}
-          >
-            <img src={movie.poster} alt={movie.title} />
-            <div className={styles.movieOverlay}>
-              <span className={styles.movieTitle}>{movie.title.toUpperCase()}</span>
+
+      <div className={`${styles.movieGrid} animate-fade-in`}>
+        {movies.map((movie) => {
+          const isSelected = selectedIds.includes(movie.id);
+          const isLocked = !isSelected && selectedIds.length >= 5;
+          return (
+            <div
+              key={movie.id}
+              className={`${styles.movieCard} ${isSelected ? styles.selected : ''} ${isLocked ? styles.locked : ''}`}
+              onClick={() => !isLocked && toggleMovie(movie)}
+            >
+              <img src={movie.poster} alt={movie.title} loading="lazy" />
+              <div className={styles.movieOverlay}>
+                <span className={styles.movieTitle}>{movie.title}</span>
+                <span className={styles.movieYear}>{movie.year}</span>
+              </div>
+              {isSelected && <div className={styles.selectedBadge}>✓</div>}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <button 
-        className={`${styles.nextBtn} animate-fade-in`} 
-        style={{ animationDelay: '0.4s', backgroundColor: selectedIds.length > 0 ? '#b066fe' : 'white', color: selectedIds.length > 0 ? 'white' : 'black' }}
-        onClick={handleFinish}
-        disabled={loading}
-      >
-        {loading ? 'SALVANDO...' : 'Finalizar Configuração'}
-      </button>
+      <div className={styles.bottomBar}>
+        <span className={styles.selectionInfo}>
+          {selectedIds.length === 0
+            ? 'Escolha até 5 filmes (opcional)'
+            : `${selectedIds.length}/5 selecionados`}
+        </span>
+        <button
+          className={styles.nextBtn}
+          onClick={handleFinish}
+          disabled={saving}
+        >
+          {saving ? 'Entrando...' : selectedIds.length > 0 ? 'Entrar no App →' : 'Pular →'}
+        </button>
+      </div>
     </div>
   );
 }
