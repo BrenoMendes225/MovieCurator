@@ -251,7 +251,31 @@
   line-height: 1.6;
 }
 
-.legal span {
-  color: rgba(255, 255, 255, 0.5);
+.errorBox {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #ff6b6b;
   font-weight: 600;
+  line-height: 1.4;
+  animation: slideIn 0.3s ease-out;
+}
+
+.successBox {
+  background: rgba(52, 199, 89, 0.1);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #34c759;
+  font-weight: 600;
+  line-height: 1.4;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }

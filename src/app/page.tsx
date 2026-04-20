@@ -12,6 +12,8 @@ export default function LandingPage() {
   const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const { isLoggedIn } = useUser();
   const router = useRouter();
   
@@ -23,13 +25,26 @@ export default function LandingPage() {
     }
   }, [isLoggedIn, router]);
 
+  const translateError = (msg: string): string => {
+    if (msg.includes('email rate limit')) return 'Limite de cadastros atingido. Aguarde alguns minutos e tente novamente.';
+    if (msg.includes('already registered') || msg.includes('User already registered')) return 'Este e-mail já possui uma conta. Tente entrar.';
+    if (msg.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (msg.includes('Email not confirmed')) return 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.';
+    if (msg.includes('Password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (msg.includes('Unable to validate email')) return 'Endereço de e-mail inválido.';
+    if (msg.includes('signup is disabled')) return 'Cadastro temporariamente desativado. Tente mais tarde.';
+    return 'Algo deu errado. Tente novamente.';
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ 
+        const { data, error } = await supabase.auth.signUp({ 
           email, 
           password,
           options: {
@@ -37,15 +52,20 @@ export default function LandingPage() {
           }
         });
         if (error) throw error;
-        alert('Confirme seu e-mail para ativar sua conta!');
+        // Se confirmação de email está desativada, o usuário já está logado
+        if (data.session) {
+          router.push('/onboarding');
+        } else {
+          setSuccessMsg('Conta criada! Verifique seu e-mail para confirmar o cadastro.');
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         router.push('/onboarding');
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro na autenticação';
-      alert(message);
+      const raw = error instanceof Error ? error.message : '';
+      setErrorMsg(translateError(raw));
     } finally {
       setLoading(false);
     }
@@ -130,6 +150,9 @@ export default function LandingPage() {
           {!isSignUp && (
             <span className={styles.forgotLink}>Esqueceu sua senha?</span>
           )}
+
+          {errorMsg && <div className={styles.errorBox}>{errorMsg}</div>}
+          {successMsg && <div className={styles.successBox}>{successMsg}</div>}
 
           <button type="submit" className={styles.submitBtn} disabled={loading}>
             {loading ? 'PROCESSANDO...' : isSignUp ? 'COMEÇAR AGORA' : 'ENTRAR NO CINEMA'}
