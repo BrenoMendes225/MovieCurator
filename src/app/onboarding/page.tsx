@@ -9,13 +9,13 @@ import styles from './onboarding.module.css';
 const GENRE_EMOJIS: Record<string, string> = {
   'Action': '⚡', 'Ação': '⚡',
   'Comedy': '😄', 'Comédia': '😄',
-  'Drama': '🎭', 'Drama': '🎭',
+  'Drama': '🎭',
   'Horror': '👻', 'Terror': '👻',
   'Science Fiction': '🚀', 'Ficção Científica': '🚀',
   'Animation': '✨', 'Animação': '✨',
   'Thriller': '🔪', 'Suspense': '🔪',
-  'Romance': '💘', 'Romance': '💘',
-  'Crime': '🕵️', 'Crime': '🕵️',
+  'Romance': '💘',
+  'Crime': '🕵️',
   'Adventure': '🗺️', 'Aventura': '🗺️',
   'Fantasy': '🧙', 'Fantasia': '🧙',
   'Documentary': '📽️', 'Documentário': '📽️',
@@ -50,15 +50,13 @@ export default function GenreSelection() {
   }, []);
 
   const toggleGenre = (id: number) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(g => g !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
+    );
   };
 
   const handleNext = async () => {
-    if (selectedIds.length < 3) return;
+    if (selectedIds.length < 3 || saving) return;
     setSaving(true);
 
     const selectedNames = genres
@@ -66,10 +64,11 @@ export default function GenreSelection() {
       .map(g => g.name);
 
     await setUserGenres(selectedNames);
-    // Salvar IDs para a próxima etapa
     sessionStorage.setItem('onboarding_genre_ids', JSON.stringify(selectedIds));
     router.push('/onboarding/movies');
   };
+
+  const canProceed = selectedIds.length >= 3;
 
   if (loading) {
     return (
@@ -83,9 +82,10 @@ export default function GenreSelection() {
 
   return (
     <div className={styles.container}>
+      {/* Step indicator */}
       <div className={styles.stepIndicator}>
         <div className={`${styles.step} ${styles.stepActive}`}>1</div>
-        <div className={styles.stepLine} />
+        <div className={`${styles.stepLine} ${styles.stepLineActive}`} />
         <div className={styles.step}>2</div>
       </div>
 
@@ -93,7 +93,7 @@ export default function GenreSelection() {
         O que você gosta de <span>assistir?</span>
       </h1>
       <p className={`${styles.description} animate-fade-in`}>
-        Escolha pelo menos 3 gêneros. Usaremos isso para montar sua experiência pessoal.
+        Escolha <strong>pelo menos 3 gêneros</strong>. Usaremos isso para montar a sua experiência pessoal.
       </p>
 
       <div className={`${styles.genreGrid} animate-fade-in`}>
@@ -114,18 +114,32 @@ export default function GenreSelection() {
         })}
       </div>
 
+      {/* Bottom bar */}
       <div className={styles.bottomBar}>
-        <span className={styles.selectionInfo}>
-          {selectedIds.length < 3
-            ? `Selecione mais ${3 - selectedIds.length} gênero${3 - selectedIds.length !== 1 ? 's' : ''}`
-            : `${selectedIds.length} gêneros escolhidos ✓`}
-        </span>
+        <div className={styles.progressInfo}>
+          <div className={styles.progressBar}>
+            <div
+              className={styles.progressFill}
+              style={{ width: `${Math.min((selectedIds.length / 3) * 100, 100)}%` }}
+            />
+          </div>
+          <span className={styles.selectionInfo}>
+            {!canProceed
+              ? `Faltam ${3 - selectedIds.length} gênero${3 - selectedIds.length !== 1 ? 's' : ''}`
+              : `${selectedIds.length} gêneros selecionados ✓`}
+          </span>
+        </div>
+
         <button
-          className={styles.nextBtn}
+          className={`${styles.nextBtn} ${canProceed ? styles.nextBtnReady : ''}`}
           onClick={handleNext}
-          disabled={selectedIds.length < 3 || saving}
+          disabled={!canProceed || saving}
         >
-          {saving ? 'Salvando...' : 'Continuar →'}
+          {saving ? (
+            <span className={styles.btnLoading}><span /><span /><span /></span>
+          ) : (
+            <>Próxima Etapa <span className={styles.btnArrow}>→</span></>
+          )}
         </button>
       </div>
     </div>

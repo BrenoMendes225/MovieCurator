@@ -1,11 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@/context/UserContext';
 import { Movie, MOVIES } from '@/data/movies';
 import { getTrendingMovies, mapToMovie, getDiscoverMovies, getNowPlayingMovies, getRandomMovie } from '@/lib/tmdb';
 import Link from 'next/link';
 import styles from './discover.module.css';
+
+// Rotação diária: chave muda a cada 24h
+function getDailyKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function getCachedRecommendations(): Movie[] | null {
+  try {
+    const cached = localStorage.getItem('curator_recommendations');
+    if (!cached) return null;
+    const { key, movies } = JSON.parse(cached);
+    if (key !== getDailyKey()) return null; // Expirado — novo dia
+    return movies as Movie[];
+  } catch {
+    return null;
+  }
+}
+
+function setCachedRecommendations(movies: Movie[]) {
+  try {
+    localStorage.setItem('curator_recommendations', JSON.stringify({
+      key: getDailyKey(),
+      movies,
+    }));
+  } catch {}
+}
 
 export default function DiscoverPage() {
   const { userGenres, watchlist, addToWatchlist, removeFromWatchlist } = useUser();
@@ -15,27 +42,34 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [isShuffling, setIsShuffling] = useState(false);
   const [shuffledMovie, setShuffledMovie] = useState<Movie | null>(null);
-  
+
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       try {
-        const [trendingData, recommendedData, nowPlayingData] = await Promise.all([
-          getTrendingMovies(),
-          userGenres.length > 0 ? getDiscoverMovies(userGenres.slice(0, 3)) : Promise.resolve([]),
-          getNowPlayingMovies()
-        ]);
-
-        // Combinar com banco de dados local para máxima variedade
-        const tmdbTrending = trendingData.map(mapToMovie);
-        const allTrending = [...MOVIES, ...tmdbTrending];
-        setTrending(allTrending);
-
-        if (recommendedData && recommendedData.length > 0) {
-          setRecommended(recommendedData.map(mapToMovie));
+        // ── Recomendações com cache de 24h ──
+        const cached = getCachedRecommendations();
+        if (cached && cached.length > 0) {
+          setRecommended(cached);
+        } else if (userGenres.length > 0) {
+          // Buscar nova seleção do dia com aleatoriedade (page variável)
+          const randomPage = Math.floor(Math.random() * 5) + 1;
+          const fresh = await getDiscoverMovies(userGenres.slice(0, 3), randomPage.toString());
+          const mapped = fresh.filter(m => m.poster_path).slice(0, 12).map(mapToMovie);
+          setCachedRecommendations(mapped);
+          setRecommended(mapped);
         }
 
+        // ── Tendências + Nos Cinemas ──
+        const [trendingData, nowPlayingData] = await Promise.all([
+          getTrendingMovies(),
+          getNowPlayingMovies(),
+        ]);
+
+        const tmdbTrending = trendingData.map(mapToMovie);
+        setTrending([...MOVIES, ...tmdbTrending]);
+
         if (nowPlayingData) {
-          setNowPlaying(nowPlayingData.map(mapToMovie));
+          setNowPlaying(nowPlayingData.filter(m => m.poster_path).map(mapToMovie));
         }
       } catch (error) {
         console.error('Erro ao carregar filmes:', error);
@@ -43,37 +77,32 @@ export default function DiscoverPage() {
         setLoading(false);
       }
     };
-    loadData();
+    load();
   }, [userGenres]);
 
-  const handleShuffle = async () => {
+  const handleShuffle = useCallback(async () => {
     setIsShuffling(true);
     setShuffledMovie(null);
-    
     try {
-      // Buscar um filme realmente aleatório do TMDB (pool grande)
-      const randomTMDB = await getRandomMovie();
-      const randomMovie = mapToMovie(randomTMDB);
-      
-      // Animação de dados (2.5 segundos)
+      const raw = await getRandomMovie();
+      const movie = mapToMovie(raw);
       setTimeout(() => {
-        setShuffledMovie(randomMovie);
+        setShuffledMovie(movie);
         setIsShuffling(false);
       }, 2500);
-    } catch (error) {
-      // Fallback para local se API falhar
-      const randomLocal = trending[Math.floor(Math.random() * trending.length)];
+    } catch {
+      const fallback = trending[Math.floor(Math.random() * trending.length)];
       setTimeout(() => {
-        setShuffledMovie(randomLocal);
+        setShuffledMovie(fallback);
         setIsShuffling(false);
       }, 2500);
     }
-  };
+  }, [trending]);
 
   if (loading) {
     return (
       <div className={styles.container}>
-        <div className={styles.loading}>Projetando o catálogo nas telas...</div>
+        <div className={styles.loading}>Preparando seu cinema...</div>
       </div>
     );
   }
@@ -82,13 +111,13 @@ export default function DiscoverPage() {
 
   return (
     <div className={styles.container}>
-      {/* Shuffle FAB */}
+      {/* ── Shuffle FAB ── */}
       <button className={styles.shuffleFAB} onClick={handleShuffle} disabled={isShuffling}>
-        <span className={styles.shuffleIcon}>🎲</span>
-        {isShuffling ? 'LANÇANDO DADOS...' : 'SORTEAR FILME'}
+        <span>🎲</span>
+        {isShuffling ? 'LANÇANDO...' : 'SORTEAR FILME'}
       </button>
 
-      {/* 3D DICE ANIMATION OVERLAY */}
+      {/* ── 3D Dice Overlay ── */}
       {isShuffling && (
         <div className={styles.shuffleOverlay}>
           <div className={styles.diceContainer}>
@@ -100,12 +129,12 @@ export default function DiscoverPage() {
               <div className={`${styles.face} ${styles.top}`}>5</div>
               <div className={`${styles.face} ${styles.bottom}`}>2</div>
             </div>
-            <div className={styles.shuffleText}>O Destino decide...</div>
+            <div className={styles.shuffleText}>O destino decide...</div>
           </div>
         </div>
       )}
 
-      {/* Shuffled Result Modal */}
+      {/* ── Result Modal ── */}
       {shuffledMovie && !isShuffling && (
         <div className={styles.resultOverlay} onClick={() => setShuffledMovie(null)}>
           <div className={styles.resultCard} onClick={e => e.stopPropagation()}>
@@ -117,13 +146,13 @@ export default function DiscoverPage() {
                 <span>★ {shuffledMovie.rating}</span>
                 <span>{shuffledMovie.year}</span>
               </div>
-              <p>{shuffledMovie.synopsis.slice(0, 160)}...</p>
+              <p>{shuffledMovie.synopsis.slice(0, 150)}...</p>
               <div className={styles.resultActions}>
                 <Link href={`/movie/${shuffledMovie.id}`} className={styles.resultPlayBtn}>
-                  DETALHES DO FILME
+                  VER DETALHES
                 </Link>
                 <button className={styles.resultCloseBtn} onClick={handleShuffle}>
-                  JOGAR NOVAMENTE
+                  JOGAR DE NOVO
                 </button>
               </div>
             </div>
@@ -131,28 +160,24 @@ export default function DiscoverPage() {
         </div>
       )}
 
+      {/* ── Featured ── */}
       {featured && (
         <section className={styles.featured}>
           <div className={styles.featuredCard}>
             <img src={featured.backdrop} alt={featured.title} className={styles.featuredImg} />
             <div className={styles.featuredOverlay} />
             <div className={styles.featuredContent}>
-              <span className={styles.categoryTag}>DESTAQUE DA SEMANA</span>
+              <span className={styles.categoryTag}>DESTAQUE DO DIA</span>
               <h1>{featured.title}</h1>
               <div className={styles.featuredActions}>
                 <Link href={`/movie/${featured.id}`} className={styles.playBtn}>
-                  <span className={styles.playIcon}>▶</span>
-                  Ver Detalhes
+                  <span>▶</span> Ver Detalhes
                 </Link>
-                <button 
+                <button
                   className={`${styles.plusBtn} ${watchlist.some(m => m.id === featured.id) ? styles.saved : ''}`}
-                  onClick={() => {
-                    if (watchlist.some(m => m.id === featured.id)) {
-                      removeFromWatchlist(featured.id);
-                    } else {
-                      addToWatchlist(featured);
-                    }
-                  }}
+                  onClick={() => watchlist.some(m => m.id === featured.id)
+                    ? removeFromWatchlist(featured.id)
+                    : addToWatchlist(featured)}
                 >
                   {watchlist.some(m => m.id === featured.id) ? '✓' : '+'}
                 </button>
@@ -162,15 +187,14 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      {/* Now Playing - NOS CINEMAS */}
+      {/* ── Nos Cinemas ── */}
       {nowPlaying.length > 0 && (
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>Nos Cinemas Agora</h2>
-            <Link href="/discover" className={styles.viewAll}>Ver Todos</Link>
           </div>
           <div className={styles.movieGrid}>
-            {nowPlaying.slice(0, 6).map((movie) => (
+            {nowPlaying.slice(0, 6).map(movie => (
               <Link href={`/movie/${movie.id}`} key={movie.id} className={styles.movieCard}>
                 <div className={styles.posterWrapper}>
                   <img src={movie.poster} alt={movie.title} />
@@ -179,7 +203,7 @@ export default function DiscoverPage() {
                 </div>
                 <div className={styles.movieInfo}>
                   <h3>{movie.title}</h3>
-                  <p>{movie.genres[0]?.toUpperCase() || 'FILME'}</p>
+                  <p>{(movie.genres[0] || 'FILME').toUpperCase()}</p>
                 </div>
               </Link>
             ))}
@@ -187,14 +211,15 @@ export default function DiscoverPage() {
         </section>
       )}
 
+      {/* ── Recomendados Para Você (rotação diária) ── */}
       {recommended.length > 0 && (
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h2>Para Você</h2>
-            <Link href="/discover" className={styles.viewAll}>Ver Tudo</Link>
+            <h2>Para Você Hoje</h2>
+            <span className={styles.refreshBadge}>🔄 Renova todo dia</span>
           </div>
           <div className={styles.movieGrid}>
-            {recommended.slice(0, 6).map((movie) => (
+            {recommended.slice(0, 12).map(movie => (
               <Link href={`/movie/${movie.id}`} key={movie.id} className={styles.movieCard}>
                 <div className={styles.posterWrapper}>
                   <img src={movie.poster} alt={movie.title} />
@@ -202,7 +227,7 @@ export default function DiscoverPage() {
                 </div>
                 <div className={styles.movieInfo}>
                   <h3>{movie.title}</h3>
-                  <p>{movie.genres[0]?.toUpperCase() || 'FILME'}</p>
+                  <p>{(movie.genres[0] || 'FILME').toUpperCase()}</p>
                 </div>
               </Link>
             ))}
@@ -210,13 +235,13 @@ export default function DiscoverPage() {
         </section>
       )}
 
+      {/* ── Catálogo Geral ── */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2>Explorar Catálogo</h2>
-          <Link href="/discover" className={styles.viewAll}>Ver Tudo</Link>
         </div>
         <div className={styles.movieGrid}>
-          {trending.slice(0, 18).map((movie) => (
+          {trending.slice(0, 18).map(movie => (
             <Link href={`/movie/${movie.id}`} key={movie.id} className={styles.movieCard}>
               <div className={styles.posterWrapper}>
                 <img src={movie.poster} alt={movie.title} />
@@ -224,7 +249,7 @@ export default function DiscoverPage() {
               </div>
               <div className={styles.movieInfo}>
                 <h3>{movie.title}</h3>
-                <p>{movie.genres[0]?.toUpperCase() || 'FILME'}</p>
+                <p>{(movie.genres[0] || 'FILME').toUpperCase()}</p>
               </div>
             </Link>
           ))}

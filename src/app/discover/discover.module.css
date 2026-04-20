@@ -126,6 +126,13 @@
   color: var(--primary);
 }
 
+.refreshBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.5px;
+}
+
 .movieGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

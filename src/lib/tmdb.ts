@@ -140,12 +140,14 @@ export const getGenresList = async () => {
   return data.genres as { id: number; name: string }[];
 };
 
-export const getDiscoverMovies = async (genreIds: string[]) => {
+export const getDiscoverMovies = async (genreIds: string[], page = '1') => {
   const data = await fetchTMDB('/discover/movie', { 
     with_genres: genreIds.join(','),
     sort_by: 'popularity.desc',
-    'vote_count.gte': '100'
+    'vote_count.gte': '100',
+    page,
   });
   return data.results as TMDBMovie[];
 };
+
 
