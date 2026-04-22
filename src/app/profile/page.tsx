@@ -101,13 +101,6 @@ export default function ProfilePage() {
           </div>
           <div className={styles.settingItem}>
             <div className={styles.settingInfo}>
-              <h4>Qualidade de Download</h4>
-              <p>Atual: 4K HDR (Premium)</p>
-            </div>
-            <span className={styles.arrow}>›</span>
-          </div>
-          <div className={styles.settingItem}>
-            <div className={styles.settingInfo}>
               <h4>Privacidade e Segurança</h4>
               <p>Gerencie seus dados de conta</p>
             </div>
