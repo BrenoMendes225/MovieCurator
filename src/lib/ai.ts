@@ -1,4 +1,4 @@
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
 export async function getAIRecommendations(genres: string[], favoriteMovies: string[]) {
   try {
