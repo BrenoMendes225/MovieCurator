@@ -87,7 +87,9 @@ export default function LandingPage() {
       
       <div className={styles.loginCard}>
         <div className={styles.header}>
-          <h1 className={styles.logo}>CURATOR</h1>
+          <div className={styles.logoContainer}>
+            <img src="/logo.png" alt="MoviFlow Logo" className={styles.logoImg} />
+          </div>
           <p className={styles.subtitle}>
             {isSignUp ? 'FAÇA PARTE DA ELITE' : 'SEU LUGAR NA PRIMEIRA FILA'}
           </p>

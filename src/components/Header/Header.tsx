@@ -93,7 +93,7 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.left}>
-        <Link href="/discover" className={styles.logo}>CURATOR</Link>
+        <Link href="/discover" className={styles.logo}>MoviFlow</Link>
       </div>
 
       <div className={styles.right} ref={wrapperRef}>
