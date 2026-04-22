@@ -9,9 +9,10 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function Header() {
-  const { isLoggedIn } = useUser();
+  const { isLoggedIn, avatarUrl, notifications, markNotificationAsRead, user } = useUser();
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Movie[]>([]);
   const [searching, setSearching] = useState(false);
@@ -39,8 +40,19 @@ export default function Header() {
 
   const handleClose = () => {
     setSearchOpen(false);
+    setNotificationsOpen(false);
     setQuery('');
     setResults([]);
+  };
+
+  const toggleNotifications = () => {
+    setNotificationsOpen(!notificationsOpen);
+    if (!notificationsOpen) setSearchOpen(false);
+  };
+
+  const toggleSearch = () => {
+    setSearchOpen(!searchOpen);
+    if (!searchOpen) setNotificationsOpen(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +141,7 @@ export default function Header() {
 
         <button
           className={`${styles.iconBtn} ${searchOpen ? styles.iconBtnActive : ''}`}
-          onClick={() => setSearchOpen(prev => !prev)}
+          onClick={toggleSearch}
           aria-label="Buscar"
         >
           {searchOpen ? (
@@ -145,8 +157,50 @@ export default function Header() {
           )}
         </button>
 
+        <div className={styles.notificationWrapper}>
+          <button
+            className={`${styles.iconBtn} ${notificationsOpen ? styles.iconBtnActive : ''}`}
+            onClick={toggleNotifications}
+            aria-label="Notificações"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            {notifications.filter(n => !n.is_read).length > 0 && (
+              <span className={styles.notificationBadge} />
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <div className={styles.notificationsDropdown}>
+              <div className={styles.notificationsHeader}>Notificações</div>
+              <div className={styles.notificationsList}>
+                {notifications.length === 0 ? (
+                  <div className={styles.noNotifications}>Você não tem novas notificações</div>
+                ) : (
+                  notifications.map(n => (
+                    <div 
+                      key={n.id} 
+                      className={`${styles.notificationItem} ${!n.is_read ? styles.unread : ''}`}
+                      onClick={() => {
+                        if (!n.is_read) markNotificationAsRead(n.id);
+                      }}
+                    >
+                      <p>{n.message}</p>
+                      <span className={styles.notificationTime}>
+                        {new Date(n.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <Link href="/profile" className={styles.avatar}>
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" />
+          <img src={avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'Felix'}`} alt="Avatar" />
         </Link>
       </div>
     </header>

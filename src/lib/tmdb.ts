@@ -95,7 +95,17 @@ export const getImageUrl = (path: string, size: 'w500' | 'original' = 'w500') =>
 };
 
 export const getTrendingMovies = async () => {
-  const data = await fetchTMDB('/trending/movie/week');
+  // Use discover instead of trending to strictly filter out movies in theaters (recent 4 months)
+  const d = new Date();
+  d.setMonth(d.getMonth() - 4);
+  const maxDate = d.toISOString().split('T')[0];
+
+  const data = await fetchTMDB('/discover/movie', {
+    sort_by: 'popularity.desc',
+    'vote_count.gte': '300',
+    'primary_release_date.lte': maxDate,
+    'with_runtime.gte': '60'
+  });
   return data.results;
 };
 
@@ -121,8 +131,12 @@ export const getRandomMovie = async () => {
     'vote_count.gte': '500', // Apenas filmes com relevância
     sort_by: 'popularity.desc'
   });
-  const randomIndex = Math.floor(Math.random() * data.results.length);
-  return data.results[randomIndex];
+  
+  const validResults = data.results.filter((m: TMDBMovie) => m.poster_path && m.backdrop_path && m.overview && m.overview.trim() !== '');
+  if (validResults.length === 0) return data.results[0]; // fallback
+  
+  const randomIndex = Math.floor(Math.random() * validResults.length);
+  return validResults[randomIndex];
 };
 
 export const getNowPlayingMovies = async () => {
@@ -140,14 +154,43 @@ export const getGenresList = async () => {
   return data.genres as { id: number; name: string }[];
 };
 
-export const getDiscoverMovies = async (genreIds: string[], page = '1') => {
-  const data = await fetchTMDB('/discover/movie', { 
-    with_genres: genreIds.join(','),
+const REVERSE_GENRE_MAP: Record<string, number> = Object.entries(GENRE_MAP).reduce(
+  (acc, [id, name]) => ({ ...acc, [name]: parseInt(id) }),
+  {}
+);
+
+export const getDiscoverMovies = async (genres: string[], page = '1', excludeIds: string[] = []) => {
+  const genreIds = genres
+    .map(name => REVERSE_GENRE_MAP[name])
+    .filter(id => !!id);
+
+  const params: Record<string, string> = {
     sort_by: 'popularity.desc',
-    'vote_count.gte': '100',
+    'vote_count.gte': '500',
+    'vote_average.gte': '6.5',
     page,
-  });
-  return data.results as TMDBMovie[];
+    'primary_release_date.gte': '2000-01-01',
+    'primary_release_date.lte': (() => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 4);
+      return d.toISOString().split('T')[0];
+    })(), // Exclui filmes dos últimos 4 meses (geralmente ainda em cartaz)
+    'with_runtime.gte': '60', // Remove curtas e especiais (como Too Many Cooks)
+  };
+
+  if (genreIds.length > 0) {
+    params.with_genres = genreIds.join(',');
+  }
+
+  const data = await fetchTMDB('/discover/movie', params);
+  let results = data.results as TMDBMovie[];
+  
+  if (excludeIds.length > 0) {
+    results = results.filter(m => !excludeIds.includes(m.id.toString()));
+  }
+
+  return results;
 };
+
 
 

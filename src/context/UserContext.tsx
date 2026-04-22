@@ -9,6 +9,10 @@ interface UserContextType {
   user: User | null;
   userGenres: string[];
   setUserGenres: (genres: string[]) => Promise<void>;
+  avatarUrl: string | null;
+  updateAvatar: (url: string) => Promise<void>;
+  notifications: any[];
+  markNotificationAsRead: (id: string) => Promise<void>;
   watchlist: Movie[];
   addToWatchlist: (movie: Movie) => Promise<void>;
   removeFromWatchlist: (movieId: string) => Promise<void>;
@@ -24,6 +28,8 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userGenres, setUserGenresState] = useState<string[]>([]);
+  const [avatarUrl, setAvatarUrlState] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
   const [ratings, setRatings] = useState<Record<string, { rating: number; review: string }>>({});
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -33,6 +39,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const resetState = useCallback(() => {
     setUserGenresState([]);
+    setAvatarUrlState(null);
+    setNotifications([]);
     setWatchlist([]);
     setRatings({});
     setIsLoggedIn(false);
@@ -41,14 +49,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
-      // 1. Fetch Profile (Genres)
+      // 1. Fetch Profile (Genres and Avatar)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('genres')
+        .select('genres, avatar_url')
         .eq('id', userId)
         .single();
       
-      if (profile) setUserGenresState(profile.genres || []);
+      if (profile) {
+        setUserGenresState(profile.genres || []);
+        setAvatarUrlState(profile.avatar_url || null);
+      }
 
       // 2. Fetch Watchlist
       const { data: watchlistData } = await supabase
@@ -84,6 +95,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           [curr.movie_id]: { rating: curr.rating, review: curr.review }
         }), {});
         setRatings(ratingsMap);
+      }
+
+      // 4. Fetch Notifications
+      const { data: notificationsData } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (notificationsData) {
+        setNotifications(notificationsData);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -128,6 +151,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     setUserGenresState(genres);
     await supabase.from('profiles').upsert({ id: user.id, genres, updated_at: new Date().toISOString() });
+  };
+
+  const updateAvatar = async (url: string) => {
+    if (!user) return;
+    setAvatarUrlState(url);
+    await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+  };
+
+  const markNotificationAsRead = async (id: string) => {
+    if (!user) return;
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
   };
 
   const addToWatchlist = async (movie: Movie) => {
@@ -194,6 +229,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         user,
         userGenres,
         setUserGenres,
+        avatarUrl,
+        updateAvatar,
+        notifications,
+        markNotificationAsRead,
         watchlist,
         addToWatchlist,
         removeFromWatchlist,

@@ -1,30 +1,65 @@
 'use client';
 
+import { useState } from 'react';
 import { useUser as useUserContext } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import styles from './profile.module.css';
 
 export default function ProfilePage() {
-  const { user, userGenres, ratings, watchlist, logout } = useUserContext();
+  const { user, userGenres, ratings, watchlist, logout, avatarUrl, updateAvatar } = useUserContext();
   const router = useRouter();
+  const [isEditingAvatar, setIsEditingAvatar] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     router.push('/');
   };
 
+  const PRESET_AVATARS = [
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || '1'}`,
+    `https://api.dicebear.com/7.x/adventurer/svg?seed=${user?.email || '2'}`,
+    `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.email || '3'}`,
+    `https://api.dicebear.com/7.x/micah/svg?seed=${user?.email || '4'}`,
+    `https://api.dicebear.com/7.x/notionists/svg?seed=${user?.email || '5'}`,
+  ];
+
+  const currentAvatar = avatarUrl || PRESET_AVATARS[0];
+
   const reviewsCount = Object.keys(ratings).length;
 
   return (
     <div className={styles.container}>
       <div className={styles.profileHeader}>
-        <div className={styles.avatarWrapper}>
-          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'Felix'}`} alt="Avatar" />
+        <div className={styles.avatarWrapper} onClick={() => setIsEditingAvatar(!isEditingAvatar)}>
+          <img src={currentAvatar} alt="Avatar" />
           <button className={styles.editBtn}>✎</button>
         </div>
         <h1>{user?.email?.split('@')[0].toUpperCase() || 'CURATOR'}</h1>
         <p className={styles.memberSince}>MEMBRO PREMIUM DESDE 2024</p>
       </div>
+
+      {isEditingAvatar && (
+        <section className={styles.section}>
+          <h3>Escolha seu Avatar</h3>
+          <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', padding: '1rem 0' }}>
+            {PRESET_AVATARS.map((url, i) => (
+              <img 
+                key={i} 
+                src={url} 
+                alt="Avatar Option" 
+                style={{ 
+                  width: '60px', height: '60px', cursor: 'pointer', borderRadius: '50%',
+                  border: currentAvatar === url ? '3px solid #e50914' : '3px solid transparent'
+                }}
+                onClick={() => {
+                  updateAvatar(url);
+                  setIsEditingAvatar(false);
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className={styles.statsBar}>
         <div className={styles.statItem}>

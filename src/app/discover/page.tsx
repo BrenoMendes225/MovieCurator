@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@/context/UserContext';
-import { Movie, MOVIES } from '@/data/movies';
-import { getTrendingMovies, mapToMovie, getDiscoverMovies, getNowPlayingMovies, getRandomMovie } from '@/lib/tmdb';
+import { Movie } from '@/data/movies';
+import { getTrendingMovies, mapToMovie, getDiscoverMovies, getNowPlayingMovies } from '@/lib/tmdb';
 import Link from 'next/link';
 import styles from './discover.module.css';
 
@@ -40,39 +40,47 @@ export default function DiscoverPage() {
   const [recommended, setRecommended] = useState<Movie[]>([]);
   const [nowPlaying, setNowPlaying] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isShuffling, setIsShuffling] = useState(false);
-  const [shuffledMovie, setShuffledMovie] = useState<Movie | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
-        // ── Recomendações com cache de 24h ──
+        // ── 1. Buscar filmes nos cinemas para filtragem (não serão exibidos) ──
+        const nowPlayingData = await getNowPlayingMovies();
+        const nowPlayingIds = nowPlayingData ? nowPlayingData.map(m => m.id.toString()) : [];
+
+        // ── 2. Recomendações com cache de 24h (Filtradas por Gênero e SEM cinema) ──
         const cached = getCachedRecommendations();
         if (cached && cached.length > 0) {
-          setRecommended(cached);
+          // Filtrar cache também caso algo tenha entrado no cinema
+          setRecommended(cached.filter(m => !nowPlayingIds.includes(m.id)));
         } else if (userGenres.length > 0) {
-          // Buscar nova seleção do dia com aleatoriedade (page variável)
           const randomPage = Math.floor(Math.random() * 5) + 1;
-          const fresh = await getDiscoverMovies(userGenres.slice(0, 3), randomPage.toString());
-          const mapped = fresh.filter(m => m.poster_path).slice(0, 12).map(mapToMovie);
+          // getDiscoverMovies agora aceita excludeIds e lida com mapeamento de nomes para IDs
+          const fresh = await getDiscoverMovies(userGenres, randomPage.toString(), nowPlayingIds);
+          const mapped = fresh
+            .filter(m => m.poster_path && m.backdrop_path && m.overview && m.overview.trim() !== '')
+            .slice(0, 12)
+            .map(mapToMovie);
+          
+          // Verify filtering
+          const overlap = mapped.filter(m => nowPlayingIds.includes(m.id));
+          console.log('Verification: Movies in both recommended and nowPlaying:', overlap.length === 0 ? 'None (Pass)' : overlap);
+          
           setCachedRecommendations(mapped);
           setRecommended(mapped);
         }
 
-        // ── Tendências + Nos Cinemas ──
-        const [trendingData, nowPlayingData] = await Promise.all([
-          getTrendingMovies(),
-          getNowPlayingMovies(),
-        ]);
-
-        const tmdbTrending = trendingData.map(mapToMovie);
-        setTrending([...MOVIES, ...tmdbTrending]);
-
-        if (nowPlayingData) {
-          setNowPlaying(nowPlayingData.filter(m => m.poster_path).map(mapToMovie));
-        }
+        // ── 3. Tendências (SEM cinema) ──
+        const trendingData = await getTrendingMovies();
+        const tmdbTrending = trendingData
+          .filter((m: any) => m.poster_path && m.backdrop_path && m.overview && m.overview.trim() !== '')
+          .map(mapToMovie)
+          .filter((m: Movie) => !nowPlayingIds.includes(m.id) && m.title !== 'Too Many Cooks');
+        
+        setTrending(tmdbTrending);
       } catch (error) {
         console.error('Erro ao carregar filmes:', error);
+
       } finally {
         setLoading(false);
       }
@@ -80,24 +88,7 @@ export default function DiscoverPage() {
     load();
   }, [userGenres]);
 
-  const handleShuffle = useCallback(async () => {
-    setIsShuffling(true);
-    setShuffledMovie(null);
-    try {
-      const raw = await getRandomMovie();
-      const movie = mapToMovie(raw);
-      setTimeout(() => {
-        setShuffledMovie(movie);
-        setIsShuffling(false);
-      }, 2500);
-    } catch {
-      const fallback = trending[Math.floor(Math.random() * trending.length)];
-      setTimeout(() => {
-        setShuffledMovie(fallback);
-        setIsShuffling(false);
-      }, 2500);
-    }
-  }, [trending]);
+
 
   if (loading) {
     return (
@@ -107,58 +98,11 @@ export default function DiscoverPage() {
     );
   }
 
-  const featured = nowPlaying[0] || recommended[0] || trending[0];
+  const featured = trending[0];
+
 
   return (
     <div className={styles.container}>
-      {/* ── Shuffle FAB ── */}
-      <button className={styles.shuffleFAB} onClick={handleShuffle} disabled={isShuffling}>
-        <span>🎲</span>
-        {isShuffling ? 'LANÇANDO...' : 'SORTEAR FILME'}
-      </button>
-
-      {/* ── 3D Dice Overlay ── */}
-      {isShuffling && (
-        <div className={styles.shuffleOverlay}>
-          <div className={styles.diceContainer}>
-            <div className={styles.dice}>
-              <div className={`${styles.face} ${styles.front}`}>1</div>
-              <div className={`${styles.face} ${styles.back}`}>6</div>
-              <div className={`${styles.face} ${styles.right}`}>3</div>
-              <div className={`${styles.face} ${styles.left}`}>4</div>
-              <div className={`${styles.face} ${styles.top}`}>5</div>
-              <div className={`${styles.face} ${styles.bottom}`}>2</div>
-            </div>
-            <div className={styles.shuffleText}>O destino decide...</div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Result Modal ── */}
-      {shuffledMovie && !isShuffling && (
-        <div className={styles.resultOverlay} onClick={() => setShuffledMovie(null)}>
-          <div className={styles.resultCard} onClick={e => e.stopPropagation()}>
-            <img src={shuffledMovie.backdrop} alt="" className={styles.resultBackdrop} />
-            <div className={styles.resultContent}>
-              <span className={styles.resultLabel}>A SORTE LANÇOU:</span>
-              <h2>{shuffledMovie.title}</h2>
-              <div className={styles.resultMeta}>
-                <span>★ {shuffledMovie.rating}</span>
-                <span>{shuffledMovie.year}</span>
-              </div>
-              <p>{shuffledMovie.synopsis.slice(0, 150)}...</p>
-              <div className={styles.resultActions}>
-                <Link href={`/movie/${shuffledMovie.id}`} className={styles.resultPlayBtn}>
-                  VER DETALHES
-                </Link>
-                <button className={styles.resultCloseBtn} onClick={handleShuffle}>
-                  JOGAR DE NOVO
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Featured ── */}
       {featured && (
@@ -187,53 +131,10 @@ export default function DiscoverPage() {
         </section>
       )}
 
-      {/* ── Nos Cinemas ── */}
-      {nowPlaying.length > 0 && (
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>Nos Cinemas Agora</h2>
-          </div>
-          <div className={styles.movieGrid}>
-            {nowPlaying.slice(0, 6).map(movie => (
-              <Link href={`/movie/${movie.id}`} key={movie.id} className={styles.movieCard}>
-                <div className={styles.posterWrapper}>
-                  <img src={movie.poster} alt={movie.title} />
-                  <div className={styles.ratingBadge}>★ {movie.rating}</div>
-                  <div className={styles.nowPlayingBadge}>NO CINEMA</div>
-                </div>
-                <div className={styles.movieInfo}>
-                  <h3>{movie.title}</h3>
-                  <p>{(movie.genres[0] || 'FILME').toUpperCase()}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── Seção removida: Nos Cinemas ── */}
 
-      {/* ── Recomendados Para Você (rotação diária) ── */}
-      {recommended.length > 0 && (
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>Para Você Hoje</h2>
-            <span className={styles.refreshBadge}>🔄 Renova todo dia</span>
-          </div>
-          <div className={styles.movieGrid}>
-            {recommended.slice(0, 12).map(movie => (
-              <Link href={`/movie/${movie.id}`} key={movie.id} className={styles.movieCard}>
-                <div className={styles.posterWrapper}>
-                  <img src={movie.poster} alt={movie.title} />
-                  <div className={styles.ratingBadge}>★ {movie.rating}</div>
-                </div>
-                <div className={styles.movieInfo}>
-                  <h3>{movie.title}</h3>
-                  <p>{(movie.genres[0] || 'FILME').toUpperCase()}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+
+      {/* ── Recomendados Para Você (Removido a pedido) ── */}
 
       {/* ── Catálogo Geral ── */}
       <section className={styles.section}>

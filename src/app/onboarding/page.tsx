@@ -64,8 +64,7 @@ export default function GenreSelection() {
       .map(g => g.name);
 
     await setUserGenres(selectedNames);
-    sessionStorage.setItem('onboarding_genre_ids', JSON.stringify(selectedIds));
-    router.push('/onboarding/movies');
+    router.push(`/onboarding/movies?genres=${selectedIds.join(',')}`);
   };
 
   const canProceed = selectedIds.length >= 3;
