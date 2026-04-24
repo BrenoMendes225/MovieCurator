@@ -1,5 +1,4 @@
-const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-const BASE_URL = 'https://api.themoviedb.org/3';
+const BASE_URL = '/api/tmdb';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
 export interface WatchProvider {
@@ -81,13 +80,12 @@ export const mapToMovie = (tmdbMovie: TMDBMovie): Movie => ({
 
 export const fetchTMDB = async (endpoint: string, params: Record<string, string> = {}) => {
   const queryParams = new URLSearchParams({
-    api_key: API_KEY || '',
-    language: 'pt-BR',
+    endpoint,
     ...params,
   });
 
-  const response = await fetch(`${BASE_URL}${endpoint}?${queryParams}`);
-  if (!response.ok) throw new Error('Falha ao buscar dados do TMDB');
+  const response = await fetch(`${BASE_URL}?${queryParams.toString()}`);
+  if (!response.ok) throw new Error('Falha ao buscar dados do TMDB via Proxy');
   return response.json();
 };
 
@@ -97,13 +95,15 @@ export const getImageUrl = (path: string, size: 'w500' | 'original' = 'w500') =>
 };
 
 export const getTrendingMovies = async () => {
-  // Use discover instead of trending to strictly filter out movies in theaters (recent 4 months)
+  // Aumentando a aleatoriedade ao buscar trending
+  const randomPage = Math.floor(Math.random() * 3) + 1;
   const d = new Date();
   d.setMonth(d.getMonth() - 5);
   const maxDate = d.toISOString().split('T')[0];
 
   const data = await fetchTMDB('/discover/movie', {
     sort_by: 'popularity.desc',
+    page: randomPage.toString(),
     'vote_count.gte': '1000',
     'vote_average.gte': '7.0',
     'primary_release_date.lte': maxDate,
@@ -183,19 +183,27 @@ export const getDiscoverMovies = async (genres: string[], page = '1', excludeIds
     .map(name => REVERSE_GENRE_MAP[name])
     .filter(id => !!id);
 
+  const sortOptions = [
+    'popularity.desc',
+    'vote_average.desc',
+    'revenue.desc',
+    'primary_release_date.desc'
+  ];
+  const randomSort = sortOptions[Math.floor(Math.random() * sortOptions.length)];
+
   const params: Record<string, string> = {
-    sort_by: 'popularity.desc',
-    'vote_count.gte': '1000', // Apenas filmes com relevância comprovada
-    'vote_average.gte': '7.0',  // Apenas filmes bem avaliados
+    sort_by: randomSort,
+    'vote_count.gte': randomSort === 'vote_average.desc' ? '2000' : '800', 
+    'vote_average.gte': '6.5',
     page,
-    'primary_release_date.gte': '1970-01-01', // Evitar filmes excessivamente antigos a menos que sejam clássicos
+    'primary_release_date.gte': '1970-01-01',
     'primary_release_date.lte': (() => {
       const d = new Date();
-      d.setMonth(d.getMonth() - 5); // Excluir lançamentos dos últimos 5 meses (mais rigoroso)
+      d.setMonth(d.getMonth() - 5);
       return d.toISOString().split('T')[0];
     })(),
-    'with_runtime.gte': '75', // Filtro rigoroso para evitar curtas e programas de TV (Too Many Cooks removido aqui)
-    'with_original_language': 'en|pt|fr|es|it|ja|ko', // Focar em cinemas consolidados
+    'with_runtime.gte': '75',
+    'with_original_language': 'en|pt|fr|es|it|ja|ko',
   };
 
   if (genreIds.length > 0) {

@@ -8,7 +8,7 @@ import styles from './movie.module.css';
 
 export default function MovieDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { ratings, addRating, addToWatchlist, removeFromWatchlist, watchlist } = useUser();
+  const { user, ratings, addRating, addToWatchlist, removeFromWatchlist, watchlist } = useUser();
   
   const [movie, setMovie] = useState<Movie | null>(null);
   const [rawMovie, setRawMovie] = useState<TMDBMovie | null>(null);
@@ -19,6 +19,8 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   const [userRating, setUserRating] = useState(ratings[id]?.rating || 0);
   const [userReview, setUserReview] = useState(ratings[id]?.review || '');
   const [isSaved, setIsSaved] = useState(false);
+  const [globalReviews, setGlobalReviews] = useState<any[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(true);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -53,8 +55,68 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
         setLoading(false);
       }
     };
+
+    const fetchGlobalReviews = async () => {
+      const supabase = (await import('@/utils/supabase/client')).createClient();
+      try {
+        const { data, error } = await supabase
+          .from('ratings')
+          .select(`
+            id,
+            rating,
+            review,
+            created_at,
+            user_id,
+            profiles (
+              full_name,
+              avatar_url
+            )
+          `)
+          .eq('movie_id', id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Supabase error fetching ratings:', error);
+          throw error;
+        }
+
+        // Fetch reactions for these reviews (fail-safe if table doesn't exist yet)
+        let reviewsWithReactions = data.map(r => ({ ...r, likes: 0, dislikes: 0, userReaction: null }));
+        
+        if (data.length > 0) {
+          try {
+            const { data: reactionData, error: recError } = await supabase
+              .from('review_reactions')
+              .select('*')
+              .in('rating_id', data.map(r => r.id));
+
+            if (!recError && reactionData) {
+              reviewsWithReactions = data.map(review => {
+                const reactions = reactionData.filter(re => re.rating_id === review.id);
+                return {
+                  ...review,
+                  likes: reactions.filter(re => re.reaction_type === 'like').length,
+                  dislikes: reactions.filter(re => re.reaction_type === 'dislike').length,
+                  userReaction: reactions.find(re => re.user_id === user?.id)?.reaction_type
+                };
+              });
+            }
+          } catch (e) {
+            console.warn('Review reactions table might not exist yet:', e);
+          }
+        }
+
+        setGlobalReviews(reviewsWithReactions);
+      } catch (err) {
+        console.error('Erro ao carregar reviews globais:', err);
+      } finally {
+        setReviewLoading(false);
+      }
+    };
+
     loadDetails();
-  }, [id, watchlist]);
+    fetchGlobalReviews();
+  }, [id, watchlist, user?.id]);
 
   if (loading) {
     return (
@@ -76,7 +138,65 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     await addRating(movie.id, userRating, userReview);
+    // Recarregar reviews globais
+    const supabase = (await import('@/utils/supabase/client')).createClient();
+    const { data } = await supabase
+      .from('ratings')
+      .select('*, profiles(full_name, avatar_url)')
+      .eq('movie_id', id)
+      .order('created_at', { ascending: false });
+    if (data) setGlobalReviews(data);
     alert('Avaliação enviada! Obrigado.');
+  };
+
+  const handleReaction = async (reviewId: string, type: 'like' | 'dislike') => {
+    if (!user) {
+      alert('Faça login para reagir a avaliações');
+      return;
+    }
+
+    const supabase = (await import('@/utils/supabase/client')).createClient();
+    
+    // Check if same reaction exists
+    const currentReview = globalReviews.find(r => r.id === reviewId);
+    if (currentReview.userReaction === type) {
+      // Remove reaction
+      await supabase.from('review_reactions').delete().eq('rating_id', reviewId).eq('user_id', user.id);
+    } else {
+      // Upsert reaction
+      await supabase.from('review_reactions').upsert({
+        user_id: user.id,
+        rating_id: reviewId,
+        reaction_type: type
+      });
+    }
+
+    // Refresh reviews
+    const { data } = await supabase
+      .from('ratings')
+      .select(`
+        id, rating, review, created_at, user_id,
+        profiles (full_name, avatar_url)
+      `)
+      .eq('movie_id', id);
+      
+    const { data: reactionData } = await supabase
+      .from('review_reactions')
+      .select('*')
+      .in('rating_id', data?.map(r => r.id) || []);
+
+    if (data) {
+      const refreshed = data.map(review => {
+        const reactions = reactionData?.filter(re => re.rating_id === review.id) || [];
+        return {
+          ...review,
+          likes: reactions.filter(re => re.reaction_type === 'like').length,
+          dislikes: reactions.filter(re => re.reaction_type === 'dislike').length,
+          userReaction: reactions.find(re => re.user_id === user?.id)?.reaction_type
+        };
+      });
+      setGlobalReviews(refreshed);
+    }
   };
 
   const handleWatchlist = async () => {
@@ -206,6 +326,53 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
             <button type="submit" className={styles.postBtn}>PUBLICAR AVALIAÇÃO</button>
           </form>
         </div>
+
+        <section className={styles.section}>
+          <h3>Avaliações da Comunidade</h3>
+          {reviewLoading ? (
+            <p>Carregando avaliações...</p>
+          ) : globalReviews.length > 0 ? (
+            <div className={styles.globalReviewsList}>
+              {globalReviews.map((review) => (
+                <div key={review.id} className={styles.globalReviewItem}>
+                  <div className={styles.globalReviewHeader}>
+                    <img 
+                      src={review.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${review.user_id}`} 
+                      className={styles.reviewerAvatar}
+                      alt="Avatar"
+                    />
+                    <div className={styles.reviewerInfo}>
+                      <h4>{review.profiles?.full_name || 'Usuário Anônimo'}</h4>
+                      <div className={styles.reviewerStars}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i} className={i < review.rating ? styles.starSmallActive : styles.starSmallInactive}>★</span>
+                        ))}
+                      </div>
+                    </div>
+                    <span className={styles.reviewDate}>{new Date(review.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className={styles.reviewText}>{review.review}</p>
+                  <div className={styles.reviewActions}>
+                    <button 
+                      className={`${styles.reactionBtn} ${review.userReaction === 'like' ? styles.reactionActive : ''}`}
+                      onClick={() => handleReaction(review.id, 'like')}
+                    >
+                      👍 <span>{review.likes || 0}</span>
+                    </button>
+                    <button 
+                      className={`${styles.reactionBtn} ${review.userReaction === 'dislike' ? styles.reactionActive : ''}`}
+                      onClick={() => handleReaction(review.id, 'dislike')}
+                    >
+                      👎 <span>{review.dislikes || 0}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.noReviews}>Seja o primeiro a avaliar este filme!</p>
+          )}
+        </section>
 
         <section className={styles.section}>
           <h3>Elenco Principal</h3>

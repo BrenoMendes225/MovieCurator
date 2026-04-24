@@ -410,3 +410,115 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+.globalReviewsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.globalReviewItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 20px;
+  border-radius: 16px;
+  transition: transform 0.2s ease;
+}
+
+.globalReviewItem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.globalReviewHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.reviewerAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--accent);
+}
+
+.reviewerInfo {
+  flex: 1;
+}
+
+.reviewerInfo h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+.reviewerStars {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.starSmallActive {
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.starSmallInactive {
+  color: rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+}
+
+.reviewDate {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.reviewText {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+
+.reviewActions {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.reactionBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reactionBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.reactionActive {
+  background: rgba(255, 184, 0, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.noReviews {
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  padding: 40px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}

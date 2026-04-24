@@ -163,6 +163,14 @@
   border-radius: 50%;
 }
 
+.toggleActive {
+  background: var(--accent) !important;
+}
+
+.toggleActive::after {
+  left: 22px !important;
+}
+
 .arrow {
   color: rgba(255, 255, 255, 0.2);
   font-size: 20px;

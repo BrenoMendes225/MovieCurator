@@ -6,7 +6,18 @@ import { useRouter } from 'next/navigation';
 import styles from './profile.module.css';
 
 export default function ProfilePage() {
-  const { user, userGenres, ratings, watchlist, logout, avatarUrl, updateAvatar } = useUserContext();
+  const { 
+    user, 
+    userGenres, 
+    ratings, 
+    watchlist, 
+    logout, 
+    avatarUrl, 
+    updateAvatar,
+    fullName,
+    notificationsEnabled,
+    setNotificationsEnabled
+  } = useUserContext();
   const router = useRouter();
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
 
@@ -34,7 +45,7 @@ export default function ProfilePage() {
           <img src={currentAvatar} alt="Avatar" />
           <button className={styles.editBtn}>✎</button>
         </div>
-        <h1>{user?.email?.split('@')[0].toUpperCase() || 'CURATOR'}</h1>
+        <h1>{fullName || user?.email?.split('@')[0].toUpperCase() || 'CURATOR'}</h1>
         <p className={styles.memberSince}>MEMBRO PREMIUM DESDE 2024</p>
       </div>
 
@@ -97,7 +108,10 @@ export default function ProfilePage() {
               <h4>Notificações Push</h4>
               <p>Receba alertas de novos lançamentos</p>
             </div>
-            <div className={styles.toggle} />
+            <div 
+              className={`${styles.toggle} ${notificationsEnabled ? styles.toggleActive : ''}`} 
+              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+            />
           </div>
           <div className={styles.settingItem}>
             <div className={styles.settingInfo}>

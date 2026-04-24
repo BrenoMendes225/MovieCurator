@@ -54,6 +54,12 @@ export default function LandingPage() {
         if (error) throw error;
         // Se confirmação de email está desativada, o usuário já está logado
         if (data.session) {
+          // Salvar o nome no perfil imediatamente
+          await supabase.from('profiles').upsert({ 
+            id: data.session.user.id, 
+            full_name: name,
+            updated_at: new Date().toISOString() 
+          });
           router.push('/onboarding');
         } else {
           setSuccessMsg('Conta criada! Verifique seu e-mail para confirmar o cadastro.');

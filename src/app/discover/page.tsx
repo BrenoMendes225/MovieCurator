@@ -8,35 +8,40 @@ import { getAIRecommendations } from '@/lib/ai';
 import Link from 'next/link';
 import styles from './discover.module.css';
 
-// Rotação diária: chave muda a cada 24h
+// Cache por usuário: chave muda a cada 24h ou quando forçado
 function getDailyKey() {
   const d = new Date();
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-function getCachedRecommendations(): Movie[] | null {
+function getCachedRecommendations(userId: string): Movie[] | null {
   try {
-    const cached = localStorage.getItem('curator_recommendations_v2'); // Versão 2 para forçar reset
+    const cached = localStorage.getItem(`curator_rec_${userId}`);
     if (!cached) return null;
     const { key, movies } = JSON.parse(cached);
-    if (key !== getDailyKey()) return null; // Expirado — novo dia
+    if (key !== getDailyKey()) return null;
     return movies as Movie[];
   } catch {
     return null;
   }
 }
 
-function setCachedRecommendations(movies: Movie[]) {
+function setCachedRecommendations(userId: string, movies: Movie[]) {
   try {
-    localStorage.setItem('curator_recommendations_v2', JSON.stringify({
+    localStorage.setItem(`curator_rec_${userId}`, JSON.stringify({
       key: getDailyKey(),
       movies,
     }));
   } catch {}
 }
 
+function clearCachedRecommendations(userId: string) {
+  localStorage.removeItem(`curator_rec_${userId}`);
+}
+
 export default function DiscoverPage() {
   const { 
+    user,
     userGenres, 
     favoriteMovies, 
     watchlist, 
@@ -45,84 +50,90 @@ export default function DiscoverPage() {
   } = useUser();
   const [recommended, setRecommended] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        // ── 1. Buscar filmes nos cinemas para filtragem (não serão exibidos) ──
-        const nowPlayingData = await getNowPlayingMovies();
-        const nowPlayingIds = nowPlayingData ? nowPlayingData.map(m => m.id.toString()) : [];
+  const loadRecommendations = useCallback(async (force = false) => {
+    if (!user) return;
+    
+    if (force) setRefreshing(true);
+    else setLoading(true);
 
-        // ── 2. Recomendações com cache de 24h (Filtradas por Gênero e SEM cinema) ──
-        const cached = getCachedRecommendations();
+    try {
+      const nowPlayingData = await getNowPlayingMovies();
+      const nowPlayingIds = nowPlayingData ? nowPlayingData.map(m => m.id.toString()) : [];
+
+      if (!force) {
+        const cached = getCachedRecommendations(user.id);
         if (cached && cached.length > 0) {
           setRecommended(cached.filter(m => !nowPlayingIds.includes(m.id)));
-        } else if (userGenres.length > 0 || favoriteMovies.length > 0) {
-          let fresh: TMDBMovie[] = [];
-          
-          // ── Tenta Recomendações de IA (GROQ) ──
-          const aiTitles = await getAIRecommendations(userGenres, favoriteMovies);
-          
-          if (aiTitles.length > 0) {
-            const aiResults = await Promise.all(
-              aiTitles.map(async (title: string) => {
-                try {
-                  const searchData = await searchMovies(title);
-                  return searchData[0] || null;
-                } catch {
-                  return null;
-                }
-              })
-            );
-            fresh = aiResults.filter((m): m is TMDBMovie => m !== null);
-          }
-
-          // ── Fallback se IA falhar ou não houver recomendações ──
-          if (fresh.length === 0 && userGenres.length > 0) {
-            const randomPage = Math.floor(Math.random() * 5) + 1;
-            fresh = await getDiscoverMovies(userGenres, randomPage.toString(), nowPlayingIds);
-          }
-
-          const mapped = fresh
-            .filter((m: TMDBMovie) => 
-              m.poster_path && 
-              m.backdrop_path && 
-              m.overview && 
-              m.overview.trim() !== '' &&
-              !m.title?.toLowerCase().includes('too many cooks') &&
-              !m.title?.toLowerCase().includes('cooks') &&
-              !favoriteMovies.some(fav => m.title?.toLowerCase() === fav.toLowerCase())
-            )
-            .map(mapToMovie);
-          
-          const finalSelection = mapped.slice(0, 18);
-          setCachedRecommendations(finalSelection);
-          setRecommended(finalSelection);
-        } else {
-          // Fallback se não houver gêneros ou recomendações
-          const trendingData = await getTrendingMovies();
-          const tmdbTrending = trendingData
-            .filter((m: TMDBMovie) => 
-              m.poster_path && 
-              m.backdrop_path && 
-              m.overview && 
-              m.overview.trim() !== '' &&
-              !m.title?.toLowerCase().includes('too many cooks') &&
-              !m.title?.toLowerCase().includes('cooks') &&
-              !favoriteMovies.some(fav => m.title?.toLowerCase() === fav.toLowerCase())
-            )
-            .map(mapToMovie);
-          setRecommended(tmdbTrending.slice(0, 18));
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Erro ao carregar filmes:', error);
-      } finally {
-        setLoading(false);
       }
-    };
-    load();
-  }, [userGenres]);
+
+      if (userGenres.length > 0 || favoriteMovies.length > 0) {
+        let fresh: TMDBMovie[] = [];
+        
+        const aiTitles = await getAIRecommendations(userGenres, favoriteMovies);
+        
+        if (aiTitles.length > 0) {
+          const aiResults = await Promise.all(
+            aiTitles.map(async (title: string) => {
+              try {
+                const searchData = await searchMovies(title);
+                return searchData[0] || null;
+              } catch {
+                return null;
+              }
+            })
+          );
+          fresh = aiResults.filter((m): m is TMDBMovie => m !== null);
+        }
+
+        if (fresh.length === 0 && userGenres.length > 0) {
+          const randomPage = Math.floor(Math.random() * 10) + 1;
+          fresh = await getDiscoverMovies(userGenres, randomPage.toString(), nowPlayingIds);
+        }
+
+        const mapped = fresh
+          .filter((m: TMDBMovie) => 
+            m.poster_path && 
+            m.backdrop_path && 
+            m.overview && 
+            m.overview.trim() !== '' &&
+            !favoriteMovies.some(fav => m.title?.toLowerCase() === fav.toLowerCase())
+          )
+          .map(mapToMovie);
+        
+        const finalSelection = mapped.slice(0, 18);
+        setCachedRecommendations(user.id, finalSelection);
+        setRecommended(finalSelection);
+      } else {
+        const trendingData = await getTrendingMovies();
+        const tmdbTrending = trendingData
+          .filter((m: TMDBMovie) => m.poster_path && m.backdrop_path && m.overview)
+          .map(mapToMovie);
+        setRecommended(tmdbTrending.slice(0, 18));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar recomendações:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user, userGenres, favoriteMovies]);
+
+  useEffect(() => {
+    loadRecommendations();
+  }, [loadRecommendations]);
+
+  const handleRefresh = () => {
+    if (user) {
+      clearCachedRecommendations(user.id);
+      loadRecommendations(true);
+    }
+  };
 
 
 
@@ -178,7 +189,18 @@ export default function DiscoverPage() {
               <h2>Recomendados Para Você</h2>
               <span className={styles.refreshBadge}>🔄 Novos filmes todo dia</span>
             </div>
-            <div className={styles.viewToggle}>
+            <div className={styles.controlsGroup}>
+              <button 
+                className={`${styles.refreshBtn} ${refreshing ? styles.refreshing : ''}`}
+                onClick={handleRefresh}
+                disabled={refreshing}
+                title="Atualizar Recomendações"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.24L21 8" />
+                  <path d="M21 3v5h-5" />
+                </svg>
+              </button>
               <button 
                 className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.toggleActive : ''}`}
                 onClick={() => setViewMode('grid')}

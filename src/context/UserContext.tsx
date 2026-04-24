@@ -9,9 +9,13 @@ interface UserContextType {
   user: User | null;
   userGenres: string[];
   setUserGenres: (genres: string[]) => Promise<void>;
+  fullName: string | null;
+  setFullName: (name: string) => Promise<void>;
   avatarUrl: string | null;
   updateAvatar: (url: string) => Promise<void>;
   notifications: any[];
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   markNotificationAsRead: (id: string) => Promise<void>;
   watchlist: Movie[];
   addToWatchlist: (movie: Movie) => Promise<void>;
@@ -30,8 +34,10 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userGenres, setUserGenresState] = useState<string[]>([]);
+  const [fullName, setFullNameState] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrlState] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsEnabled, setNotificationsEnabledState] = useState(true);
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
   const [ratings, setRatings] = useState<Record<string, { rating: number; review: string }>>({});
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -42,8 +48,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const resetState = useCallback(() => {
     setUserGenresState([]);
+    setFullNameState(null);
     setAvatarUrlState(null);
     setNotifications([]);
+    setNotificationsEnabledState(true);
     setWatchlist([]);
     setRatings({});
     setIsLoggedIn(false);
@@ -56,7 +64,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // 1. Fetch Profile (Genres and Avatar)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('genres, avatar_url, favorite_movies')
+        .select('genres, avatar_url, favorite_movies, full_name, notifications_enabled')
         .eq('id', userId)
         .single();
       
@@ -64,6 +72,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setUserGenresState(profile.genres || []);
         setAvatarUrlState(profile.avatar_url || null);
         setFavoriteMoviesState(profile.favorite_movies || []);
+        setFullNameState(profile.full_name || null);
+        setNotificationsEnabledState(profile.notifications_enabled !== false);
       }
 
       // 2. Fetch Watchlist
@@ -170,6 +180,30 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
   };
 
+  const setFullName = async (name: string) => {
+    if (!user) return;
+    setFullNameState(name);
+    await supabase.from('profiles').upsert({ id: user.id, full_name: name, updated_at: new Date().toISOString() });
+  };
+
+  const setNotificationsEnabled = async (enabled: boolean) => {
+    if (!user) return;
+    setNotificationsEnabledState(enabled);
+    await supabase.from('profiles').update({ notifications_enabled: enabled }).eq('id', user.id);
+    
+    if (enabled) {
+      // Simular uma notificação de boas-vindas ao ativar
+      const welcomeMsg = 'Notificações ativadas! Você receberá novidades e dicas diárias.';
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        message: welcomeMsg,
+        type: 'info'
+      });
+      // Atualizar lista local
+      fetchUserData(user.id);
+    }
+  };
+
   const markNotificationAsRead = async (id: string) => {
     if (!user) return;
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
@@ -240,9 +274,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         user,
         userGenres,
         setUserGenres,
+        fullName,
+        setFullName,
         avatarUrl,
         updateAvatar,
         notifications,
+        notificationsEnabled,
+        setNotificationsEnabled,
         markNotificationAsRead,
         watchlist,
         addToWatchlist,

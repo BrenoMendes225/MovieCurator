@@ -24,9 +24,9 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  // Rotas públicas (não precisam de login)
-  const publicRoutes = ['/', '/auth'];
-  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth'));
+  // Rotas públicas (não precisam de login ou são APIs)
+  const publicRoutes = ['/', '/auth', '/api'];
+  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith(r));
 
   // Rotas de onboarding (não redirecionar de volta)
   const isOnboarding = pathname.startsWith('/onboarding');
