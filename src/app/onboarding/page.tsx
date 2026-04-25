@@ -97,7 +97,7 @@ export default function GenreSelection() {
       </p>
 
       <div className={`${styles.genreGrid} animate-fade-in`}>
-        {genres.map((genre) => {
+        {(genres || []).map((genre) => {
           const isSelected = selectedIds.includes(genre.id);
           const emoji = GENRE_EMOJIS[genre.name] || '🎬';
           return (

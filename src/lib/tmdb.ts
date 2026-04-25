@@ -95,24 +95,32 @@ export const getImageUrl = (path: string, size: 'w500' | 'original' = 'w500') =>
 };
 
 export const getTrendingMovies = async () => {
-  // Aumentando a aleatoriedade ao buscar trending
-  const randomPage = Math.floor(Math.random() * 3) + 1;
-  const d = new Date();
-  d.setMonth(d.getMonth() - 5);
-  const maxDate = d.toISOString().split('T')[0];
+  try {
+    // Aumentando a aleatoriedade ao buscar trending
+    const randomPage = Math.floor(Math.random() * 3) + 1;
+    const d = new Date();
+    d.setMonth(d.getMonth() - 5);
+    const maxDate = d.toISOString().split('T')[0];
 
-  const data = await fetchTMDB('/discover/movie', {
-    sort_by: 'popularity.desc',
-    page: randomPage.toString(),
-    'vote_count.gte': '1000',
-    'vote_average.gte': '7.0',
-    'primary_release_date.lte': maxDate,
-    'with_runtime.gte': '75',
-    'with_original_language': 'en|pt|fr|es|it|ja|ko'
-  });
-  return data.results.filter((m: any) => 
-    !BANNED_TITLES.some(banned => m.title?.toLowerCase().includes(banned))
-  );
+    const data = await fetchTMDB('/discover/movie', {
+      sort_by: 'popularity.desc',
+      page: randomPage.toString(),
+      'vote_count.gte': '1000',
+      'vote_average.gte': '7.0',
+      'primary_release_date.lte': maxDate,
+      'with_runtime.gte': '75',
+      'with_original_language': 'en|pt|fr|es|it|ja|ko'
+    });
+    
+    if (!data?.results) return [];
+
+    return data.results.filter((m: any) => 
+      !BANNED_TITLES.some(banned => m.title?.toLowerCase().includes(banned))
+    );
+  } catch (error) {
+    console.error('Error fetching trending:', error);
+    return [];
+  }
 };
 
 export const getMovieDetails = async (id: string): Promise<TMDBMovie> => {
@@ -121,46 +129,56 @@ export const getMovieDetails = async (id: string): Promise<TMDBMovie> => {
 
 export const searchMovies = async (query: string) => {
   const data = await fetchTMDB('/search/movie', { query });
-  return data.results;
+  return data.results || [];
 };
 
 export const getMoviesByGenre = async (genreId: string) => {
   const data = await fetchTMDB('/discover/movie', { with_genres: genreId });
-  return data.results;
+  return data.results || [];
 };
 
 export const getRandomMovie = async () => {
-  // Aumentando para as primeiras 20 páginas (400 filmes) para máxima variedade
-  const randomPage = Math.floor(Math.random() * 20) + 1;
-  const d = new Date();
-  d.setMonth(d.getMonth() - 5);
-  const maxDate = d.toISOString().split('T')[0];
+  try {
+    // Aumentando para as primeiras 20 páginas (400 filmes) para máxima variedade
+    const randomPage = Math.floor(Math.random() * 20) + 1;
+    const d = new Date();
+    d.setMonth(d.getMonth() - 5);
+    const maxDate = d.toISOString().split('T')[0];
 
-  const data = await fetchTMDB('/discover/movie', { 
-    page: randomPage.toString(),
-    'vote_count.gte': '800', 
-    'vote_average.gte': '6.8',
-    'primary_release_date.lte': maxDate,
-    'with_runtime.gte': '75',
-    sort_by: 'popularity.desc'
-  });
-  
-  const validResults = data.results.filter((m: TMDBMovie) => 
-    m.poster_path && 
-    m.backdrop_path && 
-    m.overview && 
-    m.overview.trim() !== '' &&
-    !BANNED_TITLES.some(banned => m.title?.toLowerCase().includes(banned))
-  );
-  if (validResults.length === 0) return data.results[0]; // fallback
-  
-  const randomIndex = Math.floor(Math.random() * validResults.length);
-  return validResults[randomIndex];
+    const data = await fetchTMDB('/discover/movie', { 
+      page: randomPage.toString(),
+      'vote_count.gte': '800', 
+      'vote_average.gte': '6.8',
+      'primary_release_date.lte': maxDate,
+      'with_runtime.gte': '75',
+      sort_by: 'popularity.desc'
+    });
+    
+    if (!data?.results) return null;
+
+    const validResults = data.results.filter((m: TMDBMovie) => 
+      m.poster_path && 
+      m.backdrop_path && 
+      m.overview && 
+      m.overview.trim() !== '' &&
+      !BANNED_TITLES.some(banned => m.title?.toLowerCase().includes(banned))
+    );
+    if (validResults.length === 0) return data.results[0]; // fallback
+    
+    const randomIndex = Math.floor(Math.random() * validResults.length);
+    return validResults[randomIndex];
+  } catch {
+    return null;
+  }
 };
 
 export const getNowPlayingMovies = async () => {
-  const data = await fetchTMDB('/movie/now_playing', { region: 'BR' });
-  return data.results as TMDBMovie[];
+  try {
+    const data = await fetchTMDB('/movie/now_playing', { region: 'BR' });
+    return (data.results || []) as TMDBMovie[];
+  } catch {
+    return [];
+  }
 };
 
 export const getWatchProviders = async (id: string) => {
@@ -169,8 +187,12 @@ export const getWatchProviders = async (id: string) => {
 };
 
 export const getGenresList = async () => {
-  const data = await fetchTMDB('/genre/movie/list');
-  return data.genres as { id: number; name: string }[];
+  try {
+    const data = await fetchTMDB('/genre/movie/list');
+    return (data.genres || []) as { id: number; name: string }[];
+  } catch {
+    return [];
+  }
 };
 
 const REVERSE_GENRE_MAP: Record<string, number> = Object.entries(GENRE_MAP).reduce(
